@@ -132,6 +132,9 @@ logs/
 *.pfx
 *.jks
 
+# Generated PDF files (로컬에서 pandoc으로 생성)
+doc/*.pdf
+
 # Private keys (specific patterns to avoid false positives)
 # FIXED: Issue #237 - Replaced overly broad *key* and *secret* patterns
 *-key.*
