@@ -68,9 +68,19 @@ class AnkiParser:
 
     def _load_metadata(self, zf: zipfile.ZipFile, db_filename: str) -> tuple[dict, dict]:
         """col 테이블에서 models와 decks JSON 로드"""
-        # 실제 구현에서는 SQLite DB에서 직접 읽어야 함
-        # 여기서는 stub으로 반환
-        return {}, {}
+        with zf.open(db_filename) as db_file:
+            db_bytes = db_file.read()
+        conn = sqlite3.connect(":memory:")
+        conn.deserialize(db_bytes)
+        try:
+            row = conn.execute("SELECT models, decks FROM col LIMIT 1").fetchone()
+            if not row:
+                return {}, {}
+            return json.loads(row[0]), json.loads(row[1])
+        except Exception:
+            return {}, {}
+        finally:
+            conn.close()
 
     def _extract_media_files(self, zf: zipfile.ZipFile, source: str) -> dict[str, str]:
         """
@@ -114,15 +124,72 @@ class AnkiParser:
         media_mapping: dict[str, str],
     ) -> list[Document]:
         """SQLite DB 파싱"""
-        # 메모리에서 DB 열기
-        with sqlite3.connect(":memory:") as conn:
-            # DB 파일 내용을 메모리 DB로 로드
-            db_content = db_file.read()
-            conn.executescript(f"CREATE TABLE notes AS SELECT * FROM (VALUES ('{db_content}'))")
+        db_bytes = db_file.read()
+        conn = sqlite3.connect(":memory:")
+        conn.deserialize(db_bytes)
+        documents = []
+        try:
+            deck_name = self._get_deck_name(decks_json, source)
+            rows = conn.execute(
+                "SELECT id, flds, mid, tags FROM notes"
+            ).fetchall()
+            for _note_id, flds_raw, mid, tags in rows:
+                fields = flds_raw.split("\x1f")
+                model = models_json.get(str(mid), {})
+                field_names = [f["name"] for f in model.get("flds", [])]
+                field_map = dict(zip(field_names, fields))
 
-            # 실제 구현에서는 notes 테이블 파싱
-            # 여기서는 stub 반환
-            return []
+                word = self._pick_field(field_map, ["Front", "Question", "단어"])
+                meaning = self._pick_field(field_map, ["뜻", "Back", "Answer"])
+                if not word or not meaning:
+                    continue
+
+                pronunciation = self._pick_field(field_map, ["발음", "Pronunciation"]) or None
+                example = self._pick_field(field_map, ["예문", "Example"]) or None
+                example_translation = (
+                    self._pick_field(field_map, ["예문 뜻", "Example Translation"]) or None
+                )
+                audio_path = self._extract_audio_from_field(flds_raw, media_mapping)
+                tag_list = [t for t in (tags or "").split() if t]
+
+                documents.append(
+                    Document(
+                        word=self._strip_html(word),
+                        meaning=self._strip_html(meaning),
+                        pronunciation=self._strip_html(pronunciation) if pronunciation else None,
+                        example=self._strip_html(example) if example else None,
+                        example_translation=(
+                            self._strip_html(example_translation) if example_translation else None
+                        ),
+                        source=source,
+                        deck=deck_name,
+                        tags=tag_list,
+                        audio_path=audio_path,
+                    )
+                )
+        finally:
+            conn.close()
+        return documents
+
+    def _get_deck_name(self, decks_json: dict, fallback: str) -> str:
+        """decks JSON에서 첫 번째 비기본 덱 이름 반환"""
+        for deck_info in decks_json.values():
+            name = deck_info.get("name", "")
+            if name and name != "Default":
+                return name
+        return fallback
+
+    def _pick_field(self, field_map: dict, candidates: list[str]) -> str:
+        """후보 필드명 중 첫 번째 존재하는 값 반환"""
+        for name in candidates:
+            val = field_map.get(name, "").strip()
+            if val:
+                return val
+        return ""
+
+    def _strip_html(self, text: str) -> str:
+        """HTML 태그 제거"""
+        return BeautifulSoup(text, "html.parser").get_text().strip()
 
     def _extract_audio_from_field(self, flds: str, media_mapping: dict) -> Optional[str]:
         """필드에서 [sound:filename] 패턴 추출"""

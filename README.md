@@ -99,6 +99,16 @@ tests/
 └── test_*.py           # 테스트 파일
 ```
 
+## 문서
+
+설계서는 `doc/설계서.md`에 있습니다.
+
+PDF 생성 (pandoc + wkhtmltopdf 필요):
+
+```bash
+pandoc doc/설계서.md -o doc/설계서.pdf --pdf-engine=wkhtmltopdf -V margin-top=25 -V margin-bottom=25 -V margin-left=25 -V margin-right=25 --metadata title="설계서"
+```
+
 ## 기술 스택
 
 - Python 3.12+
