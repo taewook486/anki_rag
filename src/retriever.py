@@ -1,7 +1,6 @@
 """리트리버 - 하이브리드 검색 (Dense + Sparse + RRF)"""
 
 from typing import Optional
-import numpy as np
 from qdrant_client import QdrantClient
 from qdrant_client.models import (
     Distance,
@@ -28,15 +27,19 @@ class HybridRetriever:
         location: str = "http://localhost:6333",
         collection_name: str = "anki_rag",
         rrf_k: int = 60,
+        fetch_multiplier: int = 3,
     ):
         """
         Args:
             location: Qdrant 서버 주소
             collection_name: 컬렉션 이름
             rrf_k: RRF 상수 (기본값 60)
+            fetch_multiplier: RRF 후보 풀 확대 배수 — Dense·Sparse 각각
+                              top_k * fetch_multiplier 개를 가져온 뒤 RRF 적용
         """
         self.collection_name = collection_name
         self.rrf_k = rrf_k
+        self.fetch_multiplier = fetch_multiplier
         if location == ":memory:" or location.startswith("http"):
             self.client = QdrantClient(location=location)
         else:
@@ -66,11 +69,14 @@ class HybridRetriever:
                 },
             )
 
+    # @MX:ANCHOR: 하이브리드 검색 공개 진입점
+    # @MX:REASON: [AUTO] RAGPipeline.query(), api/routes/search.py, __main__.py 에서 호출
     def search(
         self,
         query: str,
         top_k: int = 10,
         source_filter: Optional[str] = None,
+        deck_filter: Optional[str] = None,
     ) -> list[SearchResult]:
         """
         하이브리드 검색 (Dense + Sparse RRF Fusion)
@@ -79,38 +85,31 @@ class HybridRetriever:
             query: 검색 쿼리
             top_k: 반환할 결과 수
             source_filter: source 필터 (선택)
+            deck_filter: deck 필터 (선택)
 
         Returns:
             SearchResult 리스트
         """
-        # 쿼리 임베딩 (Dense + Sparse 동시)
-        query_emb = self.embedder.model.encode(
-            [query], return_dense=True, return_sparse=True, return_colbert_vecs=False,
-        )
-
-        # Dense 쿼리 벡터: shape (1, 1024) -> list[float]
-        query_dense: list[float] = np.array(query_emb["dense_vecs"]).flatten().tolist()
-
-        # Sparse 쿼리 벡터: dict[int, float] -> SparseVector
-        sparse_weights = self.embedder._convert_sparse(query_emb["lexical_weights"][0])
+        # 쿼리 임베딩 — query instruction prefix 적용
+        query_result = self.embedder.embed_query(query)
+        query_dense: list[float] = query_result.dense_vector
         query_sparse = SparseVector(
-            indices=list(sparse_weights.keys()),
-            values=list(sparse_weights.values()),
+            indices=list(query_result.sparse_vector.keys()),
+            values=list(query_result.sparse_vector.values()),
         )
 
-        # 필터 구성
-        query_filter = None
-        if source_filter:
-            query_filter = Filter(
-                must=[FieldCondition(key="source", match=MatchValue(value=source_filter))]
-            )
+        # 필터 구성 — source, deck 복합 필터 지원
+        query_filter = self._build_filter(source_filter, deck_filter)
+
+        # fetch_multiplier 적용: RRF 후보 풀 확대
+        fetch_limit = top_k * self.fetch_multiplier
 
         # Dense 검색
         dense_response = self.client.query_points(
             collection_name=self.collection_name,
             query=query_dense,
             using="dense",
-            limit=top_k,
+            limit=fetch_limit,
             query_filter=query_filter,
             with_payload=True,
         )
@@ -120,13 +119,32 @@ class HybridRetriever:
             collection_name=self.collection_name,
             query=query_sparse,
             using="sparse",
-            limit=top_k,
+            limit=fetch_limit,
             query_filter=query_filter,
             with_payload=True,
         )
 
-        # RRF Fusion으로 병합
+        # RRF Fusion으로 병합 후 top_k로 자름
         return self._rrf_fusion(dense_response.points, sparse_response.points, top_k)
+
+    def _build_filter(
+        self,
+        source_filter: Optional[str],
+        deck_filter: Optional[str],
+    ) -> Optional[Filter]:
+        """source·deck 필터를 Qdrant Filter 객체로 변환"""
+        conditions = []
+        if source_filter:
+            conditions.append(
+                FieldCondition(key="source", match=MatchValue(value=source_filter))
+            )
+        if deck_filter:
+            conditions.append(
+                FieldCondition(key="deck", match=MatchValue(value=deck_filter))
+            )
+        if not conditions:
+            return None
+        return Filter(must=conditions)
 
     def _rrf_fusion(
         self, dense_results: list, sparse_results: list, top_k: int

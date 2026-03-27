@@ -20,6 +20,8 @@ class Document(BaseModel):
     tags: list[str] = Field(default_factory=list, description="태그 목록")
     note_type: Optional[str] = Field(None, description="노트 타입 (Simple Model, Basic 등)")
     audio_path: Optional[str] = Field(None, description="오디오 파일 경로")
+    difficulty: Optional[str] = Field(None, description="난이도 (beginner/intermediate/advanced)")
+    synonyms: list[str] = Field(default_factory=list, description="동의어 목록")
 
 
 class SearchResult(BaseModel):

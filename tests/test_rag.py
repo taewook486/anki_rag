@@ -353,7 +353,7 @@ class TestRAGPipeline:
         pipeline = RAGPipeline(retriever=mock_retriever, provider=mock_provider)
         assert pipeline.provider is mock_provider
 
-    def test_stream_mode(self, capsys):
+    def test_stream_mode(self):
         """Given stream=True일 때,
         When query를 호출하면,
         Then 스트리밍 응답이 반환된다"""
@@ -400,7 +400,7 @@ class TestRAGPipeline:
     def test_build_context_preserved(self):
         """Given 검색 결과가 있을 때,
         When _build_context를 호출하면,
-        Then 기존 형식대로 컨텍스트가 구성된다"""
+        Then 단어·뜻·출처·순위·점수 정보가 포함된다"""
         from src.rag import RAGPipeline
 
         mock_retriever = MagicMock()
@@ -413,6 +413,8 @@ class TestRAGPipeline:
         assert "단어: abandon" in context
         assert "뜻: 버리다" in context
         assert "출처: toefl" in context
+        assert "순위 1" in context
+        assert "점수" in context
 
     def test_build_prompt_preserved(self):
         """Given 컨텍스트가 있을 때,

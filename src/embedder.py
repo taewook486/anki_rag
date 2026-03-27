@@ -6,6 +6,9 @@ import torch
 
 from src.models import Document
 
+# @MX:NOTE: BGE-M3 권장 query instruction — 문서 임베딩에는 적용하지 않음
+_QUERY_INSTRUCTION = "Represent this sentence for searching relevant passages: "
+
 
 class EmbeddingResult(BaseModel):
     """임베딩 결과"""
@@ -33,8 +36,10 @@ class BGEEmbedder:
         if self._model is None:
             from FlagEmbedding import BGEM3FlagModel
 
+            # CPU 환경에서 fp16은 지원되지 않으므로 조건부 비활성화
+            use_fp16 = self.device != "cpu"
             self._model = BGEM3FlagModel(
-                self.model_name, device=self.device, use_fp16=True
+                self.model_name, device=self.device, use_fp16=use_fp16
             )
 
     @property
@@ -45,7 +50,7 @@ class BGEEmbedder:
 
     def embed(self, doc: Document) -> EmbeddingResult:
         """
-        단일 문서 임베딩
+        단일 문서 임베딩 (문서 인덱싱용 — instruction 없음)
 
         Args:
             doc: Document 객체
@@ -53,10 +58,8 @@ class BGEEmbedder:
         Returns:
             EmbeddingResult
         """
-        # 임베딩 텍스트 구성
         text = self._build_text(doc)
 
-        # encode()는 list[str]을 받아야 함
         output = self.model.encode(
             [text],
             batch_size=1,
@@ -72,7 +75,7 @@ class BGEEmbedder:
 
     def embed_batch(self, docs: list[Document]) -> list[EmbeddingResult]:
         """
-        배치 임베딩
+        배치 임베딩 (문서 인덱싱용 — instruction 없음)
 
         Args:
             docs: Document 리스트
@@ -100,12 +103,44 @@ class BGEEmbedder:
             )
         return results
 
+    def embed_query(self, query: str) -> EmbeddingResult:
+        """
+        검색 쿼리 임베딩 (BGE-M3 query instruction prefix 적용)
+
+        문서 임베딩(embed/embed_batch)과 달리 쿼리에는 instruction을 추가해야
+        검색 정확도가 향상된다.
+
+        Args:
+            query: 검색 쿼리 문자열
+
+        Returns:
+            EmbeddingResult
+        """
+        text = self._build_query_text(query)
+
+        output = self.model.encode(
+            [text],
+            batch_size=1,
+            return_dense=True,
+            return_sparse=True,
+            return_colbert_vecs=False,
+        )
+
+        return EmbeddingResult(
+            dense_vector=output["dense_vecs"][0].tolist(),
+            sparse_vector=self._convert_sparse(output["lexical_weights"][0]),
+        )
+
     def _build_text(self, doc: Document) -> str:
-        """임베딩할 텍스트 구성"""
+        """문서 임베딩 텍스트 구성"""
         parts = [doc.word, doc.meaning]
         if doc.example:
             parts.append(doc.example)
         return " ".join(parts)
+
+    def _build_query_text(self, query: str) -> str:
+        """쿼리 임베딩 텍스트 구성 — BGE-M3 권장 instruction prefix 적용"""
+        return f"{_QUERY_INSTRUCTION}{query}"
 
     def _convert_sparse(self, sparse_weights) -> dict[int, float]:
         """Sparse 가중치를 dict로 변환

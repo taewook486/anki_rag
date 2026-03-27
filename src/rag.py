@@ -2,12 +2,46 @@
 
 from __future__ import annotations
 
+import logging
 import os
 from typing import Optional, Iterator, Protocol, runtime_checkable
 
 from openai import OpenAI
 
 from src.retriever import HybridRetriever
+
+logger = logging.getLogger(__name__)
+
+# ---------------------------------------------------------------------------
+# 컨텍스트 품질 상수
+# ---------------------------------------------------------------------------
+# @MX:NOTE: RRF 점수 임계값 — k=60 기준 단일 리스트 rank≈120에 해당; 빈 컬렉션은 0 반환
+_MIN_RRF_SCORE: float = 0.005
+_MAX_CONTEXT_CHARS: int = 2000   # 전체 컨텍스트 최대 문자 수
+_MAX_EXAMPLE_CHARS: int = 150    # 예문 필드 최대 문자 수
+
+# ---------------------------------------------------------------------------
+# 시스템 프롬프트 (Few-shot 예시 2개 포함)
+# ---------------------------------------------------------------------------
+SYSTEM_PROMPT = """당신은 영어 학습 전문가입니다.
+제공된 [참고 자료]만을 근거로 답변하세요.
+참고 자료에 없는 내용은 "검색된 자료에 없습니다"라고 하세요.
+단어·뜻·예문·출처(source, deck)를 포함해 답변하세요.
+
+[답변 형식 예시]
+질문: abandon의 뜻은?
+답변:
+**abandon** [/əˈbændən/]
+뜻: 포기하다, 버리다
+예문: He abandoned the car.
+출처: TOEFL 영단어 (toefl)
+
+질문: give up과 비슷한 구동사는?
+답변:
+give up의 유사 표현:
+1. **abandon** — 완전히 버리다 (출처: toefl)
+2. **quit** — 그만두다 (출처: phrasal)
+공통점: 모두 '중단·포기' 의미를 포함합니다."""
 
 
 # ---------------------------------------------------------------------------
@@ -42,6 +76,25 @@ def _import_anthropic():
         raise ImportError(
             "anthropic 패키지가 필요합니다. pip install anki-rag[anthropic]"
         )
+
+
+def _extract_system(messages: list[dict]) -> tuple[str, list[dict]]:
+    """messages 리스트에서 system role 메시지를 분리한다.
+
+    Anthropic API는 system을 최상위 파라미터로 전달해야 하므로
+    messages 배열에서 추출하여 분리한다.
+
+    Returns:
+        (system_content, non_system_messages)
+    """
+    system_content = ""
+    user_messages = []
+    for msg in messages:
+        if msg.get("role") == "system":
+            system_content = msg.get("content", "")
+        else:
+            user_messages.append(msg)
+    return system_content, user_messages
 
 
 # ---------------------------------------------------------------------------
@@ -92,21 +145,29 @@ class AnthropicProvider:
         self.client = Anthropic(api_key=api_key)
 
     def generate(self, messages: list[dict], model: str, max_tokens: int) -> str:
-        """동기 응답 생성"""
-        message = self.client.messages.create(
-            model=model,
-            max_tokens=max_tokens,
-            messages=messages,
-        )
+        """동기 응답 생성 — system role을 별도 파라미터로 분리"""
+        system_content, user_messages = _extract_system(messages)
+        kwargs: dict = {
+            "model": model,
+            "max_tokens": max_tokens,
+            "messages": user_messages,
+        }
+        if system_content:
+            kwargs["system"] = system_content
+        message = self.client.messages.create(**kwargs)
         return message.content[0].text
 
     def stream(self, messages: list[dict], model: str, max_tokens: int) -> Iterator[str]:
-        """스트리밍 응답 생성"""
-        with self.client.messages.stream(
-            model=model,
-            max_tokens=max_tokens,
-            messages=messages,
-        ) as stream_ctx:
+        """스트리밍 응답 생성 — system role을 별도 파라미터로 분리"""
+        system_content, user_messages = _extract_system(messages)
+        kwargs: dict = {
+            "model": model,
+            "max_tokens": max_tokens,
+            "messages": user_messages,
+        }
+        if system_content:
+            kwargs["system"] = system_content
+        with self.client.messages.stream(**kwargs) as stream_ctx:
             yield from stream_ctx.text_stream
 
 
@@ -182,6 +243,8 @@ class RAGPipeline:
         self.model = model or os.getenv("LLM_MODEL", "gpt-4o-mini")
         self.max_tokens = max_tokens
 
+    # @MX:ANCHOR: RAG 파이프라인 공개 진입점
+    # @MX:REASON: [AUTO] query(), api/routes/query.py, __main__.py, web/app.py 에서 호출
     def query(
         self,
         question: str,
@@ -207,47 +270,78 @@ class RAGPipeline:
         # 컨텍스트 구성
         context = self._build_context(search_results)
 
-        # 프롬프트 구성
-        prompt = self._build_prompt(question, context)
-        messages = [{"role": "user", "content": prompt}]
+        # system + user 메시지 구조 (Few-shot은 SYSTEM_PROMPT에 포함)
+        messages = [
+            {"role": "system", "content": SYSTEM_PROMPT},
+            {"role": "user", "content": self._build_user_content(question, context)},
+        ]
 
         # LLM 호출
         if stream:
             return self._stream_response(messages)
-        else:
-            return self.provider.generate(
-                messages=messages,
-                model=self.model,
-                max_tokens=self.max_tokens,
-            )
+        return self.provider.generate(
+            messages=messages,
+            model=self.model,
+            max_tokens=self.max_tokens,
+        )
 
     def _build_context(self, search_results: list) -> str:
-        """검색 결과로 컨텍스트 구성"""
+        """검색 결과로 컨텍스트 구성
+
+        - 순위·점수 메타정보 포함
+        - _MIN_RRF_SCORE 미만 결과 제외
+        - 예문 _MAX_EXAMPLE_CHARS 자 truncation
+        - 누적 문자 수 _MAX_CONTEXT_CHARS 초과 시 중단
+        """
         context_parts = []
+        total_chars = 0
+
         for result in search_results:
+            if result.score < _MIN_RRF_SCORE:
+                continue
+
             doc = result.document
             parts = [
+                f"[순위 {result.rank} | 점수 {result.score:.4f}]",
                 f"단어: {doc.word}",
                 f"뜻: {doc.meaning}",
             ]
             if doc.pronunciation:
                 parts.append(f"발음: {doc.pronunciation}")
             if doc.example:
-                parts.append(f"예문: {doc.example}")
+                example = doc.example[:_MAX_EXAMPLE_CHARS]
+                if len(doc.example) > _MAX_EXAMPLE_CHARS:
+                    example += "..."
+                parts.append(f"예문: {example}")
             if doc.example_translation:
-                parts.append(f"예문 번역: {doc.example_translation}")
+                parts.append(f"예문 번역: {doc.example_translation[:100]}")
 
             source_info = f"출처: {doc.source}"
             if doc.deck:
                 source_info += f" ({doc.deck})"
             parts.append(source_info)
 
-            context_parts.append("\n".join(parts))
+            entry = "\n".join(parts)
+            total_chars += len(entry)
+            if total_chars > _MAX_CONTEXT_CHARS:
+                logger.debug("컨텍스트 문자 수 한도 초과 — %d건 포함", len(context_parts))
+                break
+            context_parts.append(entry)
 
         return "\n\n---\n\n".join(context_parts)
 
+    def _build_user_content(self, question: str, context: str) -> str:
+        """user role에 삽입할 content 구성"""
+        if not context.strip():
+            return f"[참고 자료]\n(검색 결과 없음)\n\n[질문]\n{question}\n\n답변:"
+        return f"[참고 자료]\n{context}\n\n[질문]\n{question}\n\n답변:"
+
     def _build_prompt(self, question: str, context: str) -> str:
-        """프롬프트 구성"""
+        """하위 호환성 유지용 단일 문자열 프롬프트 구성
+
+        Note: query()는 system role 방식(_build_user_content)을 사용한다.
+              이 메서드는 직접 호출 또는 레거시 코드 호환을 위해 유지한다.
+        """
         if not context.strip():
             return f"""당신은 영어 학습 도우미입니다. 관련 데이터가 검색되지 않았습니다. 가능한 범위 내에서 질문에 답변해주세요.
 
@@ -272,6 +366,5 @@ class RAGPipeline:
             max_tokens=self.max_tokens,
         ):
             full_response += text
-            print(text, end="", flush=True)
-        print()  # 개행
+            logger.debug("stream chunk: %s", text)
         return full_response
