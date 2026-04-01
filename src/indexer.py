@@ -1,5 +1,6 @@
 """인덱서 - Qdrant 벡터 DB 인덱싱"""
 
+import uuid
 from typing import Optional
 from qdrant_client import QdrantClient
 from qdrant_client.models import (
@@ -13,6 +14,9 @@ from qdrant_client.models import (
 
 from src.models import Document
 from src.embedder import EmbeddingResult
+
+# @MX:NOTE: 대용량 upsert 시 메모리/타임아웃 방지용 배치 크기
+_UPSERT_BATCH_SIZE = 500
 
 
 class QdrantIndexer:
@@ -57,22 +61,28 @@ class QdrantIndexer:
                 },
             )
 
-    def upsert(self, documents: list[Document], embeddings: list[EmbeddingResult]):
+    def upsert(
+        self,
+        documents: list[Document],
+        embeddings: list[EmbeddingResult],
+        batch_size: int = _UPSERT_BATCH_SIZE,
+    ):
         """
         문서 upsert (Dense + Sparse 벡터)
 
         Args:
             documents: Document 리스트
             embeddings: EmbeddingResult 리스트 (dense_vector + sparse_vector)
+            batch_size: 배치당 upsert 포인트 수 (기본 500)
         """
         points = []
-        for idx, (doc, emb) in enumerate(zip(documents, embeddings)):
+        for doc, emb in zip(documents, embeddings):
             sparse_indices = list(emb.sparse_vector.keys())
             sparse_values = list(emb.sparse_vector.values())
 
             points.append(
                 PointStruct(
-                    id=idx,
+                    id=str(uuid.uuid4()),
                     vector={
                         "dense": emb.dense_vector,
                         "sparse": SparseVector(
@@ -91,8 +101,14 @@ class QdrantIndexer:
                         "tags": doc.tags,
                         "note_type": doc.note_type,
                         "audio_path": doc.audio_path,
+                        "difficulty": doc.difficulty,
+                        "synonyms": doc.synonyms,
                     },
                 )
             )
 
-        self.client.upsert(collection_name=self.collection_name, points=points)
+        for i in range(0, len(points), batch_size):
+            self.client.upsert(
+                collection_name=self.collection_name,
+                points=points[i : i + batch_size],
+            )

@@ -338,7 +338,7 @@ class TestRAGPipeline:
         pipeline.query("test", source_filter="toefl")
 
         mock_retriever.search.assert_called_once_with(
-            "test", top_k=5, source_filter="toefl"
+            "test", top_k=5, source_filter="toefl", deck_filter=None
         )
 
     def test_custom_provider_injection(self):
@@ -416,18 +416,3 @@ class TestRAGPipeline:
         assert "순위 1" in context
         assert "점수" in context
 
-    def test_build_prompt_preserved(self):
-        """Given 컨텍스트가 있을 때,
-        When _build_prompt를 호출하면,
-        Then 기존 형식대로 프롬프트가 구성된다"""
-        from src.rag import RAGPipeline
-
-        mock_retriever = MagicMock()
-        mock_provider = MagicMock()
-
-        pipeline = RAGPipeline(retriever=mock_retriever, provider=mock_provider)
-        prompt = pipeline._build_prompt("abandon 뜻?", "컨텍스트 내용")
-
-        assert "abandon 뜻?" in prompt
-        assert "컨텍스트 내용" in prompt
-        assert "영어 학습 도우미" in prompt

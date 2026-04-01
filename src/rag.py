@@ -242,6 +242,7 @@ class RAGPipeline:
         self.provider = provider or create_provider()
         self.model = model or os.getenv("LLM_MODEL", "gpt-4o-mini")
         self.max_tokens = max_tokens
+        self.last_results: list = []  # 마지막 검색 결과 캐시 (CLI 오디오 재생 등에서 재사용)
 
     # @MX:ANCHOR: RAG 파이프라인 공개 진입점
     # @MX:REASON: [AUTO] query(), api/routes/query.py, __main__.py, web/app.py 에서 호출
@@ -250,7 +251,10 @@ class RAGPipeline:
         question: str,
         top_k: int = 5,
         source_filter: Optional[str] = None,
+        deck_filter: Optional[str] = None,
         stream: bool = False,
+        history: Optional[list[dict]] = None,
+        on_chunk=None,
     ) -> str:
         """
         질의응답
@@ -259,26 +263,32 @@ class RAGPipeline:
             question: 사용자 질문
             top_k: 검색할 문서 수
             source_filter: source 필터
+            deck_filter: deck 필터
             stream: 스트리밍 응답 여부
+            history: 이전 대화 히스토리 [{"role": "user"/"assistant", "content": "..."}]
+            on_chunk: 스트리밍 청크 콜백 (stream=True일 때 사용)
 
         Returns:
             답변 텍스트
         """
         # 문서 검색
-        search_results = self.retriever.search(question, top_k=top_k, source_filter=source_filter)
+        search_results = self.retriever.search(
+            question, top_k=top_k, source_filter=source_filter, deck_filter=deck_filter
+        )
+        self.last_results = search_results
 
         # 컨텍스트 구성
         context = self._build_context(search_results)
 
-        # system + user 메시지 구조 (Few-shot은 SYSTEM_PROMPT에 포함)
-        messages = [
-            {"role": "system", "content": SYSTEM_PROMPT},
-            {"role": "user", "content": self._build_user_content(question, context)},
-        ]
+        # system + (이전 대화) + 현재 user 메시지 구조
+        messages: list[dict] = [{"role": "system", "content": SYSTEM_PROMPT}]
+        if history:
+            messages.extend(history)
+        messages.append({"role": "user", "content": self._build_user_content(question, context)})
 
         # LLM 호출
         if stream:
-            return self._stream_response(messages)
+            return self._stream_response(messages, on_chunk=on_chunk)
         return self.provider.generate(
             messages=messages,
             model=self.model,
@@ -290,7 +300,7 @@ class RAGPipeline:
 
         - 순위·점수 메타정보 포함
         - _MIN_RRF_SCORE 미만 결과 제외
-        - 예문 _MAX_EXAMPLE_CHARS 자 truncation
+        - 예문 _MAX_EXAMPLE_CHARS 초과 글자 truncation
         - 누적 문자 수 _MAX_CONTEXT_CHARS 초과 시 중단
         """
         context_parts = []
@@ -336,29 +346,12 @@ class RAGPipeline:
             return f"[참고 자료]\n(검색 결과 없음)\n\n[질문]\n{question}\n\n답변:"
         return f"[참고 자료]\n{context}\n\n[질문]\n{question}\n\n답변:"
 
-    def _build_prompt(self, question: str, context: str) -> str:
-        """하위 호환성 유지용 단일 문자열 프롬프트 구성
+    def _stream_response(self, messages: list[dict], on_chunk=None) -> str:
+        """스트리밍 응답
 
-        Note: query()는 system role 방식(_build_user_content)을 사용한다.
-              이 메서드는 직접 호출 또는 레거시 코드 호환을 위해 유지한다.
+        Args:
+            on_chunk: 청크 수신 시 호출할 콜백 (예: CLI 실시간 출력용)
         """
-        if not context.strip():
-            return f"""당신은 영어 학습 도우미입니다. 관련 데이터가 검색되지 않았습니다. 가능한 범위 내에서 질문에 답변해주세요.
-
-질문: {question}
-
-답변:"""
-        return f"""당신은 영어 학습 도우미입니다. 다음 컨텍스트를 바탕으로 질문에 답변해주세요.
-
-컨텍스트:
-{context}
-
-질문: {question}
-
-답변:"""
-
-    def _stream_response(self, messages: list[dict]) -> str:
-        """스트리밍 응답"""
         full_response = ""
         for text in self.provider.stream(
             messages=messages,
@@ -366,5 +359,7 @@ class RAGPipeline:
             max_tokens=self.max_tokens,
         ):
             full_response += text
+            if on_chunk:
+                on_chunk(text)
             logger.debug("stream chunk: %s", text)
         return full_response
