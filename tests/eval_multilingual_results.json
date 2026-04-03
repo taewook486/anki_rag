@@ -1,0 +1,1414 @@
+{
+  "config": {
+    "sample_size": 100,
+    "top_k": 5,
+    "seed": 42
+  },
+  "summary": {
+    "total": 100,
+    "hit_count": 99,
+    "hit_rate": 99.0
+  },
+  "results": [
+    {
+      "word": "She'll be there reading a book.",
+      "meaning": "그녀는 거기서 책을 읽고 있을 거예요.",
+      "source": "sentences",
+      "hit": true,
+      "rank": 1,
+      "top_results": [
+        "she'll be there reading a book.",
+        "stick at",
+        "she said she would be right there.",
+        "read what's written there.",
+        "i'll be there waiting for you."
+      ]
+    },
+    {
+      "word": "unfurl",
+      "meaning": "ənˈfərl넓히다",
+      "source": "toefl_voca_v1",
+      "hit": true,
+      "rank": 1,
+      "top_results": [
+        "unfurl",
+        "broaden",
+        "uncover",
+        "expand",
+        "enlarge"
+      ]
+    },
+    {
+      "word": "counterpart",
+      "meaning": "n. 상대, 상대방, 관계자",
+      "source": "--forvo-youglish_link",
+      "hit": true,
+      "rank": 1,
+      "top_results": [
+        "counterpart",
+        "relative",
+        "comparison",
+        "beat to",
+        "jack is up against a tough opponent."
+      ]
+    },
+    {
+      "word": "get after¹",
+      "meaning": "다그치다, 재촉하다",
+      "source": "_-forvo-youglish_",
+      "hit": true,
+      "rank": 1,
+      "top_results": [
+        "get after¹",
+        "impel",
+        "chase up¹",
+        "hasten",
+        "reiterate"
+      ]
+    },
+    {
+      "word": "turgid",
+      "meaning": "a [ˈtərʤɪd]\n부어오른, 과장된",
+      "source": "xfer_voca_2022",
+      "hit": true,
+      "rank": 1,
+      "top_results": [
+        "turgid",
+        "bloated",
+        "stilted",
+        "bombastic",
+        "overwrought"
+      ]
+    },
+    {
+      "word": "indiscriminate",
+      "meaning": "a [ˌɪndɪˈskrɪmənət]\n무차별의; 혼잡한, 난잡한",
+      "source": "xfer_voca_2022",
+      "hit": true,
+      "rank": 1,
+      "top_results": [
+        "indiscriminate",
+        "promiscuous",
+        "chaotic",
+        "convoluted",
+        "imminent"
+      ]
+    },
+    {
+      "word": "secession",
+      "meaning": "sɪˈsɛʃən이탈",
+      "source": "toefl_voca_v1",
+      "hit": true,
+      "rank": 1,
+      "top_results": [
+        "secession",
+        "entail",
+        "secede",
+        "citation",
+        "rapacious"
+      ]
+    },
+    {
+      "word": "infantry",
+      "meaning": "ˈɪnfəntri보병",
+      "source": "toefl_voca_v1",
+      "hit": true,
+      "rank": 1,
+      "top_results": [
+        "infantry",
+        "sentry",
+        "indicative",
+        "jar",
+        "infer"
+      ]
+    },
+    {
+      "word": "The machine's working fine.",
+      "meaning": "기계는 잘 작동되고 있습니다.",
+      "source": "sentences",
+      "hit": true,
+      "rank": 1,
+      "top_results": [
+        "the machine's working fine.",
+        "everything's under control.",
+        "he's doing fine.",
+        "the car's running fine.",
+        "this machine's worth a million dollars."
+      ]
+    },
+    {
+      "word": "defamation",
+      "meaning": "ˌdɛfəˈmeɪʃən명예 훼손Deck 만든 이 : https://blog.naver.com/ilgu4000https://eju7.tistory.com/",
+      "source": "toefl_voca_v1",
+      "hit": true,
+      "rank": 1,
+      "top_results": [
+        "defamation",
+        "deprivation",
+        "confrontation",
+        "sincere",
+        "subversive"
+      ]
+    },
+    {
+      "word": "The muscles in my arm felt sore.",
+      "meaning": "제 팔 근육이 아팠습니다.",
+      "source": "sentences",
+      "hit": true,
+      "rank": 1,
+      "top_results": [
+        "the muscles in my arm felt sore.",
+        "a dog bit my arm.",
+        "i feel those muscles slacking.",
+        "it broke my heart.",
+        "i caught him by the arm."
+      ]
+    },
+    {
+      "word": "It just doesn't make any sense.",
+      "meaning": "그건 도저히 말이 안돼요.",
+      "source": "sentences",
+      "hit": true,
+      "rank": 1,
+      "top_results": [
+        "it just doesn't make any sense.",
+        "it just doesn't make sense.",
+        "it's all nonsense.",
+        "that's out of the question.",
+        "that doesn't make any sense."
+      ]
+    },
+    {
+      "word": "inconclusive",
+      "meaning": "adj. (확고한 결정, 결과에 이를 정도로) 결정적이 아닌, 결론에 이르지 못하는",
+      "source": "--forvo-youglish_link",
+      "hit": true,
+      "rank": 1,
+      "top_results": [
+        "inconclusive",
+        "conclusive",
+        "decisive",
+        "determinant",
+        "upshot"
+      ]
+    },
+    {
+      "word": "tantalize",
+      "meaning": "v. 감질나게 하다",
+      "source": "--forvo-youglish_link",
+      "hit": true,
+      "rank": 1,
+      "top_results": [
+        "tantalize",
+        "compare",
+        "concatenate",
+        "winnow",
+        "appreciably"
+      ]
+    },
+    {
+      "word": "deride",
+      "meaning": "dɪˈraɪd비웃다",
+      "source": "toefl_voca_v1",
+      "hit": true,
+      "rank": 1,
+      "top_results": [
+        "deride",
+        "ridicule",
+        "mock",
+        "divulge",
+        "chide"
+      ]
+    },
+    {
+      "word": "gainsay",
+      "meaning": "v [ˈgeɪnˌseɪ]\n반대(반박)하다; 부정하다",
+      "source": "xfer_voca_2022",
+      "hit": true,
+      "rank": 1,
+      "top_results": [
+        "gainsay",
+        "renege",
+        "interrogate",
+        "reverse",
+        "negate"
+      ]
+    },
+    {
+      "word": "penitent",
+      "meaning": "a [ˈpɛnɪtɪnt]\n후회한, 참회한",
+      "source": "xfer_voca_2022",
+      "hit": true,
+      "rank": 1,
+      "top_results": [
+        "penitent",
+        "compunction",
+        "penance",
+        "rueful",
+        "repentance"
+      ]
+    },
+    {
+      "word": "I'm wondering if you could help me.",
+      "meaning": "당신이 절 도와줄 수 있을지 궁금하군요.",
+      "source": "sentences",
+      "hit": true,
+      "rank": 1,
+      "top_results": [
+        "i'm wondering if you could help me.",
+        "give me a hand.",
+        "help me get this situation.",
+        "help me get the meaning of this.",
+        "i could use your help."
+      ]
+    },
+    {
+      "word": "They need to be trained before they can enter the competition.",
+      "meaning": "그들은 대회에 참가하기 전에 훈련을 받아야 합니다.",
+      "source": "sentences",
+      "hit": true,
+      "rank": 1,
+      "top_results": [
+        "they need to be trained before they can enter the competition.",
+        "they're trained to survive in the difficult situations.",
+        "i've been training for that competition.",
+        "they must learn it on their own.",
+        "tee up²"
+      ]
+    },
+    {
+      "word": "splendor",
+      "meaning": "n. 훌륭함, 탁월함, 화려함; v. 화려하게 장식하다",
+      "source": "--forvo-youglish_link",
+      "hit": true,
+      "rank": 1,
+      "top_results": [
+        "splendor",
+        "adorn",
+        "embellish",
+        "decorate",
+        "boast"
+      ]
+    },
+    {
+      "word": "How does it feel?",
+      "meaning": "느낌이 어떻습니까?",
+      "source": "sentences",
+      "hit": true,
+      "rank": 1,
+      "top_results": [
+        "how does it feel?",
+        "that's pretty much my feeling on it.",
+        "how do you feel?",
+        "i got a good feeling about this.",
+        "do you feel it?"
+      ]
+    },
+    {
+      "word": "cooperate",
+      "meaning": "kˈwɑpərˌeɪt협력하다",
+      "source": "toefl_voca_v1",
+      "hit": true,
+      "rank": 1,
+      "top_results": [
+        "cooperate",
+        "collaboration",
+        "impart",
+        "cooperative",
+        "corroborate"
+      ]
+    },
+    {
+      "word": "There's nothing that can solve the problem.",
+      "meaning": "문제를 해결할 수 있는 것은 아무것도 없습니다.",
+      "source": "sentences",
+      "hit": true,
+      "rank": 1,
+      "top_results": [
+        "there's nothing that can solve the problem.",
+        "there isn't anything they can do about it.",
+        "i can handle matters.",
+        "you have nothing you can do about it.",
+        "he will have it settled."
+      ]
+    },
+    {
+      "word": "I wish I had done it.",
+      "meaning": "내가 했으면 좋았을 텐데.",
+      "source": "sentences",
+      "hit": true,
+      "rank": 1,
+      "top_results": [
+        "i wish i had done it.",
+        "i could have used your help.",
+        "i wish i could have been there with you.",
+        "i would have done it if i wanted to.",
+        "i could do that if i wanted to."
+      ]
+    },
+    {
+      "word": "harangue",
+      "meaning": "n [həræŋ]\n(열렬한)연설, 열변; 장광설",
+      "source": "xfer_voca_2022",
+      "hit": true,
+      "rank": 1,
+      "top_results": [
+        "harangue",
+        "tirade",
+        "invective",
+        "dissertation",
+        "eloquence"
+      ]
+    },
+    {
+      "word": "I would love it if that were true.",
+      "meaning": "그게 사실이었으면 정말 좋겠어요.",
+      "source": "sentences",
+      "hit": true,
+      "rank": 1,
+      "top_results": [
+        "i would love it if that were true.",
+        "i want you to know something.",
+        "that will be something.",
+        "i'd like the chance to get to know him.",
+        "i'd love to know what that is."
+      ]
+    },
+    {
+      "word": "Don't you get tired of that?",
+      "meaning": "당신은 그것이 지겹지도 않아요?",
+      "source": "sentences",
+      "hit": true,
+      "rank": 1,
+      "top_results": [
+        "don't you get tired of that?",
+        "don't you get tired of us arguing all the time?",
+        "don't you get tired of us yelling at each other?",
+        "isn't it exciting?",
+        "you don't know what it is."
+      ]
+    },
+    {
+      "word": "get through²",
+      "meaning": "소비하다, 끝을보다",
+      "source": "_-forvo-youglish_",
+      "hit": true,
+      "rank": 1,
+      "top_results": [
+        "get through²",
+        "consume",
+        "consummation",
+        "try on",
+        "surpass"
+      ]
+    },
+    {
+      "word": "subsidiary",
+      "meaning": "adj. 부수적인, 자회사의, 보조의; n. 지사, 계열사",
+      "source": "--forvo-youglish_link",
+      "hit": true,
+      "rank": 1,
+      "top_results": [
+        "subsidiary",
+        "auxiliary",
+        "incidental",
+        "additional",
+        "ancillary"
+      ]
+    },
+    {
+      "word": "malt",
+      "meaning": "mɔlt맥아",
+      "source": "toefl_voca_v1",
+      "hit": true,
+      "rank": 1,
+      "top_results": [
+        "malt",
+        "muster",
+        "colt",
+        "motley",
+        "tortilla"
+      ]
+    },
+    {
+      "word": "I thought I'd try out my sea legs.",
+      "meaning": "배를 한번 타볼까 해서.",
+      "source": "sentences",
+      "hit": true,
+      "rank": 1,
+      "top_results": [
+        "i thought i'd try out my sea legs.",
+        "i'm thinking of taking a trip down to the beach.",
+        "i'm going to find out who's behind this.",
+        "i think i should be going.",
+        "omnipresent"
+      ]
+    },
+    {
+      "word": "It's what I live for.",
+      "meaning": "이 맛에 산다니까요.",
+      "source": "sentences",
+      "hit": true,
+      "rank": 1,
+      "top_results": [
+        "it's what i live for.",
+        "it's for sale.",
+        "just tell me who's behind this.",
+        "i have that restaurant on my mind.",
+        "he's been around here."
+      ]
+    },
+    {
+      "word": "get out⁴",
+      "meaning": "꺼내다",
+      "source": "_-forvo-youglish_",
+      "hit": true,
+      "rank": 1,
+      "top_results": [
+        "get out⁴",
+        "extract",
+        "get over with",
+        "broach",
+        "draw st from st"
+      ]
+    },
+    {
+      "word": "droop",
+      "meaning": "drup고개를 떨구다, 처지다",
+      "source": "toefl_voca_v1",
+      "hit": true,
+      "rank": 1,
+      "top_results": [
+        "droop",
+        "doddering",
+        "go down⁷",
+        "rattle",
+        "quandary"
+      ]
+    },
+    {
+      "word": "enormity",
+      "meaning": "n [ɪˈnɔrməti]\n극악, 무법, 범죄 행위, 큰 죄; 대단함",
+      "source": "xfer_voca_2022",
+      "hit": true,
+      "rank": 1,
+      "top_results": [
+        "enormity",
+        "atrocity",
+        "perversity",
+        "severity",
+        "depravity"
+      ]
+    },
+    {
+      "word": "Why won't you take this elevator?",
+      "meaning": "이 엘리베이터를 타세요.",
+      "source": "sentences",
+      "hit": true,
+      "rank": 1,
+      "top_results": [
+        "why won't you take this elevator?",
+        "take the elevator down the hole.",
+        "take the elevator up to the eleventh floor.",
+        "take the elevator down to the lobby.",
+        "let's go this way."
+      ]
+    },
+    {
+      "word": "cursory",
+      "meaning": "ˈkərsəri털털한",
+      "source": "toefl_voca_v1",
+      "hit": true,
+      "rank": 1,
+      "top_results": [
+        "cursory",
+        "feather",
+        "speculative",
+        "lank",
+        "petulant"
+      ]
+    },
+    {
+      "word": "somber",
+      "meaning": "ˈsɑmbər우울한",
+      "source": "toefl_voca_v1",
+      "hit": true,
+      "rank": 1,
+      "top_results": [
+        "somber",
+        "gloomy",
+        "miserable",
+        "shameful",
+        "melancholy"
+      ]
+    },
+    {
+      "word": "I loved you from the first time I saw you.",
+      "meaning": "당신을 처음 본 순간부터 당신을 사랑했어요.",
+      "source": "sentences",
+      "hit": true,
+      "rank": 1,
+      "top_results": [
+        "i loved you from the first time i saw you.",
+        "it was love at first sight.",
+        "whatever comes, i'll love you just as i do now until i die.",
+        "i liked him on sight.",
+        "it's an honor to share this moment with you."
+      ]
+    },
+    {
+      "word": "thesaurus",
+      "meaning": "θəˈsɔrəs시소러스",
+      "source": "toefl_voca_v1",
+      "hit": true,
+      "rank": 1,
+      "top_results": [
+        "thesaurus",
+        "textual",
+        "virus",
+        "thesis",
+        "i'll be right there and pick him up."
+      ]
+    },
+    {
+      "word": "Where exactly are you?",
+      "meaning": "당신은 정확히 지금 어디 있는 거요?",
+      "source": "sentences",
+      "hit": true,
+      "rank": 1,
+      "top_results": [
+        "where exactly are you?",
+        "he's supposed to be here by now, where is he?",
+        "well, can you tell me where you're living now?",
+        "you're lying.",
+        "you're running away from your present situation."
+      ]
+    },
+    {
+      "word": "Everything's under control.",
+      "meaning": "모든 게 잘 진행되고 있어요.",
+      "source": "sentences",
+      "hit": true,
+      "rank": 1,
+      "top_results": [
+        "everything's under control.",
+        "i'm doing a good job.",
+        "as far as they say, everything is going well for them.",
+        "it seems to be going well.",
+        "she owes me a favor."
+      ]
+    },
+    {
+      "word": "Why don't we put this dinner on my tab?",
+      "meaning": "이 저녁식사는 내가 내는 게 어때요?",
+      "source": "sentences",
+      "hit": true,
+      "rank": 1,
+      "top_results": [
+        "why don't we put this dinner on my tab?",
+        "i can fix your dinner.",
+        "i saved this seat for you.",
+        "this one is on me.",
+        "how am i doin'?"
+      ]
+    },
+    {
+      "word": "cool off²",
+      "meaning": "진정하다",
+      "source": "_-forvo-youglish_",
+      "hit": false,
+      "rank": -1,
+      "top_results": [
+        "calm down",
+        "feel for",
+        "please calm down.",
+        "purify",
+        "cool down²"
+      ]
+    },
+    {
+      "word": "by and large",
+      "meaning": "대체로, 전반적으로",
+      "source": "--forvo-youglish_link",
+      "hit": true,
+      "rank": 4,
+      "top_results": [
+        "as a whole",
+        "overall",
+        "broadly",
+        "by and large",
+        "on the whole"
+      ]
+    },
+    {
+      "word": "Does make a difference?",
+      "meaning": "무슨 상관있어요?",
+      "source": "sentences",
+      "hit": true,
+      "rank": 1,
+      "top_results": [
+        "does make a difference?",
+        "i'm sorry, what's this got to do with me?",
+        "what has this got to do with you?",
+        "you're not part of this.",
+        "it's something with you."
+      ]
+    },
+    {
+      "word": "A cup of coffee would suffice.",
+      "meaning": "커피 한 잔이면 충분할 겁니다.",
+      "source": "sentences",
+      "hit": true,
+      "rank": 1,
+      "top_results": [
+        "a cup of coffee would suffice.",
+        "i would settle for a cup of coffee.",
+        "two coffees, please, one with milk.",
+        "you gonna offer me a coffee?",
+        "that will do me very well."
+      ]
+    },
+    {
+      "word": "rife",
+      "meaning": "raɪf유행하는, 만연한",
+      "source": "toefl_voca_v1",
+      "hit": true,
+      "rank": 1,
+      "top_results": [
+        "rife",
+        "rampant",
+        "pervasive",
+        "fawning",
+        "prevail"
+      ]
+    },
+    {
+      "word": "Danty, take me home to my sons.",
+      "meaning": "댄티, 날 집에 있는 아들한테로 좀 데려다 줘요.",
+      "source": "sentences",
+      "hit": true,
+      "rank": 1,
+      "top_results": [
+        "danty, take me home to my sons.",
+        "get me to a telephone.",
+        "i'll take you home.",
+        "i want my son back.",
+        "i'm gonna take you home."
+      ]
+    },
+    {
+      "word": "abdominal",
+      "meaning": "əbˈdɑmənəl복부의",
+      "source": "toefl_voca_v1",
+      "hit": true,
+      "rank": 1,
+      "top_results": [
+        "abdominal",
+        "abdomen",
+        "subjugate",
+        "elder",
+        "reminiscent"
+      ]
+    },
+    {
+      "word": "The guys on the top are afraid of the sudden changes.",
+      "meaning": "권력자들은 갑작스런 변화를 두려워합니다.",
+      "source": "sentences",
+      "hit": true,
+      "rank": 1,
+      "top_results": [
+        "the guys on the top are afraid of the sudden changes.",
+        "the guys on the top got nervous.",
+        "are you afraid of change?",
+        "the guys on the top don't like that idea.",
+        "i'm scared."
+      ]
+    },
+    {
+      "word": "make up²",
+      "meaning": "지어내다",
+      "source": "_-forvo-youglish_",
+      "hit": true,
+      "rank": 1,
+      "top_results": [
+        "make up²",
+        "recite",
+        "get over with",
+        "rebuild",
+        "mope about"
+      ]
+    },
+    {
+      "word": "It was too beautiful.",
+      "meaning": "기가 막히게 아름다운 곳이에요.",
+      "source": "sentences",
+      "hit": true,
+      "rank": 1,
+      "top_results": [
+        "it was too beautiful.",
+        "wow, this is some place.",
+        "what a beautiful thought!",
+        "astoundingly",
+        "this is really nice."
+      ]
+    },
+    {
+      "word": "I'll be right back. It won't take long.",
+      "meaning": "곧 돌아올게요. 오래 걸리지 않을 거예요.",
+      "source": "sentences",
+      "hit": true,
+      "rank": 1,
+      "top_results": [
+        "i'll be right back. it won't take long.",
+        "i will be back in a minute.",
+        "i'll be right back.",
+        "i'll be coming back to you soon.",
+        "i'll be back as soon as i can."
+      ]
+    },
+    {
+      "word": "Have you ever been to England before?",
+      "meaning": "영국에 와 보신 적이 있으십니까?",
+      "source": "sentences",
+      "hit": true,
+      "rank": 1,
+      "top_results": [
+        "have you ever been to england before?",
+        "is there anybody here from england?",
+        "have you been there?",
+        "i've been there.",
+        "omnipresent"
+      ]
+    },
+    {
+      "word": "His personality is, let's say, a bit odd.",
+      "meaning": "그의 성격은, 말하자면 좀 이상합니다.",
+      "source": "sentences",
+      "hit": true,
+      "rank": 1,
+      "top_results": [
+        "his personality is, let's say, a bit odd.",
+        "there is conflicting information about his character.",
+        "he's been acting strangely.",
+        "i'm suspicious of his intentions.",
+        "his intellectual potential is way above par."
+      ]
+    },
+    {
+      "word": "disgusted",
+      "meaning": "dɪsˈgəstɪd역겨운",
+      "source": "toefl_voca_v1",
+      "hit": true,
+      "rank": 1,
+      "top_results": [
+        "disgusted",
+        "disgusting",
+        "disgruntled",
+        "that's the most disgusting thing i've ever heard.",
+        "discontent"
+      ]
+    },
+    {
+      "word": "fling",
+      "meaning": "flɪŋ내던지다",
+      "source": "toefl_voca_v1",
+      "hit": true,
+      "rank": 1,
+      "top_results": [
+        "fling",
+        "flip",
+        "flaunt",
+        "get over with",
+        "fawning"
+      ]
+    },
+    {
+      "word": "conform",
+      "meaning": "v. 따르다, (성질 등) 일치하다",
+      "source": "--forvo-youglish_link",
+      "hit": true,
+      "rank": 1,
+      "top_results": [
+        "conform",
+        "assimilate",
+        "concur",
+        "jibe",
+        "accord"
+      ]
+    },
+    {
+      "word": "matriculate",
+      "meaning": "v [məˈtrɪkjəleɪt]\n입학하다; 대학 입학을 허가하다, 대학에 입학시키다",
+      "source": "xfer_voca_2022",
+      "hit": true,
+      "rank": 1,
+      "top_results": [
+        "matriculate",
+        "incorporate",
+        "enlist",
+        "attribute",
+        "validate"
+      ]
+    },
+    {
+      "word": "latch on",
+      "meaning": "한참 후에야 깨닫다",
+      "source": "_-forvo-youglish_",
+      "hit": true,
+      "rank": 1,
+      "top_results": [
+        "latch on",
+        "winkle out",
+        "they'll catch on.",
+        "i'll see to it later.",
+        "apprehend"
+      ]
+    },
+    {
+      "word": "damned",
+      "meaning": "dæmd저주받은",
+      "source": "toefl_voca_v1",
+      "hit": true,
+      "rank": 1,
+      "top_results": [
+        "damned",
+        "demented",
+        "disheveled",
+        "serendipity",
+        "impaired"
+      ]
+    },
+    {
+      "word": "perceptive",
+      "meaning": "a [pərˈsɛptɪv]\n지각력이 있는, 지각의, 지각이 예민한\nsol-baram.tistory.comblog.naver.com/woxion",
+      "source": "xfer_voca_2022",
+      "hit": true,
+      "rank": 1,
+      "top_results": [
+        "perceptive",
+        "insightful",
+        "conversant",
+        "prominent",
+        "omnipotent"
+      ]
+    },
+    {
+      "word": "blurry",
+      "meaning": "ˈbləri흐릿한",
+      "source": "toefl_voca_v1",
+      "hit": true,
+      "rank": 1,
+      "top_results": [
+        "blurry",
+        "hazy",
+        "blur",
+        "belittle",
+        "tang"
+      ]
+    },
+    {
+      "word": "He pitched nine perfect blanks yesterday.",
+      "meaning": "그 사람은 어제 완봉승을 거뒀어요.",
+      "source": "sentences",
+      "hit": true,
+      "rank": 1,
+      "top_results": [
+        "he pitched nine perfect blanks yesterday.",
+        "he's paid what he owed.",
+        "he has a crush on me.",
+        "have it in for",
+        "he'll catch up with us."
+      ]
+    },
+    {
+      "word": "get out of²",
+      "meaning": "차에서 나오다, 하차하다",
+      "source": "_-forvo-youglish_",
+      "hit": true,
+      "rank": 1,
+      "top_results": [
+        "get out of²",
+        "get down⁴",
+        "get off²",
+        "leave from",
+        "get in³"
+      ]
+    },
+    {
+      "word": "Care to double the wager?",
+      "meaning": "내기를 배로 올릴까요?",
+      "source": "sentences",
+      "hit": true,
+      "rank": 1,
+      "top_results": [
+        "care to double the wager?",
+        "will you help me lift this up?",
+        "and then tomorrow i'm flying to l.a.",
+        "get across³",
+        "he'll be here any minute."
+      ]
+    },
+    {
+      "word": "It was just a dream.",
+      "meaning": "그건 그저 꿈일 뿐이에요.",
+      "source": "sentences",
+      "hit": true,
+      "rank": 1,
+      "top_results": [
+        "it was just a dream.",
+        "it was just a misunderstanding.",
+        "it's only a matter of time.",
+        "that's just wasting your time.",
+        "i thought i was dreaming."
+      ]
+    },
+    {
+      "word": "I doubt you could anyway.",
+      "meaning": "어쨌든 난 당신이 그 일을 해낼 수 있을지 의심스럽소.",
+      "source": "sentences",
+      "hit": true,
+      "rank": 1,
+      "top_results": [
+        "i doubt you could anyway.",
+        "i sincerely doubt that.",
+        "i can barely do it.",
+        "you think i can do this?",
+        "this might work."
+      ]
+    },
+    {
+      "word": "strive",
+      "meaning": "straɪv노력하다",
+      "source": "toefl_voca_v1",
+      "hit": true,
+      "rank": 1,
+      "top_results": [
+        "strive",
+        "endeavor",
+        "attempt",
+        "implement (v)",
+        "aspire"
+      ]
+    },
+    {
+      "word": "Scarlett, I thought of you at our wedding yesterday.",
+      "meaning": "스칼렛, 어제 우리 결혼식 때 당신이 생각났어요.",
+      "source": "sentences",
+      "hit": true,
+      "rank": 1,
+      "top_results": [
+        "scarlett, i thought of you at our wedding yesterday.",
+        "i saw you at my friend's wedding.",
+        "scarlett, this isn't right and you know it.",
+        "you remind me of my cousin.",
+        "that's the place for our wedding."
+      ]
+    },
+    {
+      "word": "Bastian, go for it!",
+      "meaning": "바스티안, 뛰어들어!",
+      "source": "sentences",
+      "hit": true,
+      "rank": 1,
+      "top_results": [
+        "bastian, go for it!",
+        "coming through!",
+        "ah, bastian. well, it's been a while.",
+        "get a move on it!",
+        "what if something happens to you, bastian?"
+      ]
+    },
+    {
+      "word": "comity",
+      "meaning": "n [ˈkoʊmɪti]\n예의바름, 공손",
+      "source": "xfer_voca_2022",
+      "hit": true,
+      "rank": 1,
+      "top_results": [
+        "comity",
+        "dutiful",
+        "humility",
+        "debonair",
+        "complicity"
+      ]
+    },
+    {
+      "word": "dig up",
+      "meaning": "파내다",
+      "source": "_-forvo-youglish_",
+      "hit": true,
+      "rank": 1,
+      "top_results": [
+        "dig up",
+        "pry",
+        "ape",
+        "excavate",
+        "get over with"
+      ]
+    },
+    {
+      "word": "emblem",
+      "meaning": "ˈɛmbləm상징",
+      "source": "toefl_voca_v1",
+      "hit": true,
+      "rank": 1,
+      "top_results": [
+        "emblem",
+        "allusion",
+        "numb",
+        "resemblance",
+        "aplomb"
+      ]
+    },
+    {
+      "word": "Keep your voice down.",
+      "meaning": "당신 목소리를 낮추세요.",
+      "source": "sentences",
+      "hit": true,
+      "rank": 2,
+      "top_results": [
+        "lower your voice, please.",
+        "keep your voice down.",
+        "keep your voice down!",
+        "could you please keep your voice down?",
+        "helen, lower your voice."
+      ]
+    },
+    {
+      "word": "I'm thinking of taking a trip down to the beach.",
+      "meaning": "해변으로 여행을 할까 해요.",
+      "source": "sentences",
+      "hit": true,
+      "rank": 1,
+      "top_results": [
+        "i'm thinking of taking a trip down to the beach.",
+        "he's going to make a trip to japan.",
+        "i think i should be going.",
+        "thank you for making this trip so enjoyable.",
+        "yearn for"
+      ]
+    },
+    {
+      "word": "respite",
+      "meaning": "ˈrɛspɪt휴식",
+      "source": "toefl_voca_v1",
+      "hit": true,
+      "rank": 1,
+      "top_results": [
+        "respite",
+        "recess",
+        "resurrection",
+        "garnish",
+        "retrospect"
+      ]
+    },
+    {
+      "word": "I think you're not willing to forgive her.",
+      "meaning": "당신은 그녀를 용서할 뜻이 없는 것 같군요.",
+      "source": "sentences",
+      "hit": true,
+      "rank": 1,
+      "top_results": [
+        "i think you're not willing to forgive her.",
+        "it can't be her.",
+        "i think you're not willing to accept it.",
+        "i can stop thinking about her.",
+        "i think you're not willing to go there."
+      ]
+    },
+    {
+      "word": "truncate",
+      "meaning": "v [ˈtrəŋˌkeɪt]\n끝을 자르다, 면이 도게 자르다",
+      "source": "xfer_voca_2022",
+      "hit": true,
+      "rank": 1,
+      "top_results": [
+        "truncate",
+        "sever",
+        "terminate",
+        "beget",
+        "draw"
+      ]
+    },
+    {
+      "word": "glitter",
+      "meaning": "ˈglɪtər반짝반짝 빛나다",
+      "source": "toefl_voca_v1",
+      "hit": true,
+      "rank": 1,
+      "top_results": [
+        "glitter",
+        "twinkle",
+        "glisten",
+        "glint",
+        "foster"
+      ]
+    },
+    {
+      "word": "I'm not leaving anybody behind again.",
+      "meaning": "아무도 남겨두고 가지 않겠어요.",
+      "source": "sentences",
+      "hit": true,
+      "rank": 1,
+      "top_results": [
+        "i'm not leaving anybody behind again.",
+        "i'm not letting you get rid of me.",
+        "don't leave it behind.",
+        "if it's too far, i don't want to go.",
+        "we can't miss the one."
+      ]
+    },
+    {
+      "word": "You've hidden these from me?",
+      "meaning": "이런 사실을 나한테 감춰왔다는 겁니까?",
+      "source": "sentences",
+      "hit": true,
+      "rank": 1,
+      "top_results": [
+        "you've hidden these from me?",
+        "this incident reminds under wraps.",
+        "honey, i'm home.",
+        "this incident reminds a secret.",
+        "they were nice to me."
+      ]
+    },
+    {
+      "word": "eat up ²",
+      "meaning": "소모하다 , 쓰다",
+      "source": "_-forvo-youglish_",
+      "hit": true,
+      "rank": 1,
+      "top_results": [
+        "eat up ²",
+        "spend",
+        "consume",
+        "amass",
+        "go into¹"
+      ]
+    },
+    {
+      "word": "The bus was so crowded that I couldn't move.",
+      "meaning": "그 버스가 너무나 복잡해서 난 움직일 수도 없었어요.",
+      "source": "sentences",
+      "hit": true,
+      "rank": 1,
+      "top_results": [
+        "the bus was so crowded that i couldn't move.",
+        "you're gonna miss the bus.",
+        "box in",
+        "i could have given you the world.",
+        "there's not enough seats on the bus."
+      ]
+    },
+    {
+      "word": "It concerns you directly.",
+      "meaning": "그건 당신에게 직접 관계 있는 일입니다.",
+      "source": "sentences",
+      "hit": true,
+      "rank": 1,
+      "top_results": [
+        "it concerns you directly.",
+        "it concerns us all.",
+        "it's something with you.",
+        "what has this got to do with you?",
+        "it looks like he has company."
+      ]
+    },
+    {
+      "word": "gourmet",
+      "meaning": "n [ˈgʊrˌmeɪ]\n식도락가, 미식가",
+      "source": "xfer_voca_2022",
+      "hit": true,
+      "rank": 1,
+      "top_results": [
+        "gourmet",
+        "gastronomy",
+        "dietary",
+        "convenience",
+        "germane"
+      ]
+    },
+    {
+      "word": "courteous",
+      "meaning": "adj. 공손한, 정중한, 예의바른",
+      "source": "_-forvo_-youglish_link",
+      "hit": true,
+      "rank": 1,
+      "top_results": [
+        "courteous",
+        "debonair",
+        "respectful",
+        "refined",
+        "dutiful"
+      ]
+    },
+    {
+      "word": "cease",
+      "meaning": "v. 중단하다, 그치다",
+      "source": "--forvo-youglish_link",
+      "hit": true,
+      "rank": 1,
+      "top_results": [
+        "cease",
+        "halt",
+        "suspend",
+        "assimilate",
+        "interrupt"
+      ]
+    },
+    {
+      "word": "molt",
+      "meaning": "v [moʊlt]\n털을 갈다",
+      "source": "xfer_voca_2022",
+      "hit": true,
+      "rank": 1,
+      "top_results": [
+        "molt",
+        "hone",
+        "cull",
+        "rob",
+        "grope"
+      ]
+    },
+    {
+      "word": "continual",
+      "meaning": "adj. 반복되는, 계속되는",
+      "source": "--forvo-youglish_link",
+      "hit": true,
+      "rank": 1,
+      "top_results": [
+        "continual",
+        "continued",
+        "consecutive",
+        "continuous",
+        "beat out"
+      ]
+    },
+    {
+      "word": "zero in on²",
+      "meaning": "향하다",
+      "source": "_-forvo-youglish_",
+      "hit": true,
+      "rank": 5,
+      "top_results": [
+        "head for",
+        "i'm on the way.",
+        "be off¹",
+        "seek",
+        "zero in on²"
+      ]
+    },
+    {
+      "word": "Is there any place I can write to you?",
+      "meaning": "제가 편지를 보낼 곳이라도 있나요?",
+      "source": "sentences",
+      "hit": true,
+      "rank": 1,
+      "top_results": [
+        "is there any place i can write to you?",
+        "i have some letters to be mailed.",
+        "omnipresent",
+        "i'll write.",
+        "i have the papers right here."
+      ]
+    },
+    {
+      "word": "do without",
+      "meaning": "없이 지내다",
+      "source": "_-forvo-youglish_",
+      "hit": true,
+      "rank": 2,
+      "top_results": [
+        "go without",
+        "do without",
+        "get along with¹",
+        "ramble",
+        "get over with"
+      ]
+    },
+    {
+      "word": "distort",
+      "meaning": "v. 비틀다, 일그러뜨리다; 왜곡하다",
+      "source": "--forvo-youglish_link",
+      "hit": true,
+      "rank": 1,
+      "top_results": [
+        "distort",
+        "wrench",
+        "deceive",
+        "distortion",
+        "seek"
+      ]
+    },
+    {
+      "word": "crabbed",
+      "meaning": "a [kræbd]\n성미가 까다로운.기분이 언짢은,(문제 따위가)난해한.",
+      "source": "xfer_voca_2022",
+      "hit": true,
+      "rank": 1,
+      "top_results": [
+        "crabbed",
+        "cantankerous",
+        "testy",
+        "recondite",
+        "fastidious"
+      ]
+    },
+    {
+      "word": "He'll divide it into equal shares for us.",
+      "meaning": "그는 우리를 위해 그걸 똑같은 몫으로 나누어 줄 겁니다.",
+      "source": "sentences",
+      "hit": true,
+      "rank": 1,
+      "top_results": [
+        "he'll divide it into equal shares for us.",
+        "he'll figure out a way to increase our profits.",
+        "he'll figure out a way to get us out.",
+        "he'll cooperate for the money.",
+        "we'll divide this piece of cake equally."
+      ]
+    },
+    {
+      "word": "work at²",
+      "meaning": "열심히 일하다",
+      "source": "_-forvo-youglish_",
+      "hit": true,
+      "rank": 1,
+      "top_results": [
+        "work at²",
+        "go at",
+        "i used to be a hard worker.",
+        "keep up the good work!",
+        "he's a work horse."
+      ]
+    },
+    {
+      "word": "desultory",
+      "meaning": "a [ˈdɛsəlˌtɔri]\n체계성이 없는, 마구잡이식의",
+      "source": "xfer_voca_2022",
+      "hit": true,
+      "rank": 1,
+      "top_results": [
+        "desultory",
+        "cursory",
+        "derogatory",
+        "integral",
+        "predatory"
+      ]
+    },
+    {
+      "word": "Step on the gas!",
+      "meaning": "액셀을 밟아요. - 속력을 내세요.",
+      "source": "sentences",
+      "hit": true,
+      "rank": 1,
+      "top_results": [
+        "step on the gas!",
+        "step on it.",
+        "speed up!",
+        "accelerate",
+        "pursue"
+      ]
+    }
+  ]
+}

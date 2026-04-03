@@ -22,14 +22,14 @@ def test_document_creation_with_all_fields():
         deck="TOEFL 영단어",
         tags=["verb", "academic"],
         note_type="Simple Model",
-        audio_path="data/media/hacker_toeic/aban.mp3",
+        audio_paths=["data/media/hacker_toeic/aban.mp3"],
     )
 
     assert doc.word == "abandon"
     assert doc.meaning == "포기하다, 버리다"
     assert doc.pronunciation == "/əˈbændən/"
     assert doc.example == "He abandoned the project."
-    assert doc.audio_path == "data/media/hacker_toeic/aban.mp3"
+    assert doc.audio_paths == ["data/media/hacker_toeic/aban.mp3"]
 
 
 def test_document_creation_minimal_fields():
@@ -45,7 +45,7 @@ def test_document_creation_minimal_fields():
     assert doc.meaning == "테스트"
     assert doc.pronunciation is None  # 선택적 필드
     assert doc.example is None
-    assert doc.audio_path is None
+    assert doc.audio_paths == []
 
 
 def test_document_missing_required_field():

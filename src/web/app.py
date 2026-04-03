@@ -75,11 +75,12 @@ def show_search_page():
                             with cols[0]:
                                 st.subheader(f"{i}. {result['word']}")
                             with cols[1]:
-                                if result.get("audio_available") and result.get("audio_path"):
+                                if result.get("audio_available") and result.get("audio_paths"):
                                     import hashlib
-                                    audio_id = hashlib.md5(result["audio_path"].encode()).hexdigest()
-                                    audio_url = f"{API_BASE_URL}/api/audio/{audio_id}"
-                                    st.audio(audio_url, format="audio/mpeg")
+                                    for ap in result["audio_paths"]:
+                                        audio_id = hashlib.md5(ap.encode()).hexdigest()
+                                        audio_url = f"{API_BASE_URL}/api/audio/{audio_id}"
+                                        st.audio(audio_url, format="audio/mpeg")
                             with cols[2]:
                                 st.metric("점수", f"{result['score']:.2f}")
                             with cols[3]:

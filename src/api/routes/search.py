@@ -44,7 +44,7 @@ class SearchResultItem(BaseModel):
     score: float = Field(..., ge=0.0)
     rank: int
     audio_available: bool
-    audio_path: Optional[str] = None
+    audio_paths: list[str] = []
 
 
 class SearchResponse(BaseModel):
@@ -86,8 +86,8 @@ async def search(request: SearchRequest) -> SearchResponse:
                 deck=doc.deck,
                 score=result.score,
                 rank=result.rank,
-                audio_available=doc.audio_path is not None,
-                audio_path=doc.audio_path,
+                audio_available=len(doc.audio_paths) > 0,
+                audio_paths=doc.audio_paths,
             ))
 
         return SearchResponse(results=search_results)

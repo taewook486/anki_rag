@@ -136,8 +136,8 @@ class TestAnkiParser:
         docs = parser.parse_file(str(apkg), source="hacker_toeic")
 
         assert len(docs) == 1
-        assert docs[0].audio_path is not None
-        assert "hello.mp3" in docs[0].audio_path
+        assert len(docs[0].audio_paths) > 0
+        assert any("hello.mp3" in p for p in docs[0].audio_paths)
 
     def test_skip_notes_without_word_or_meaning(self, tmp_path):
         """word 또는 meaning이 없는 노트 스킵"""

@@ -149,7 +149,7 @@ class AnkiParser:
                 example_translation = (
                     self._pick_field(field_map, ["예문 뜻", "Example Translation"]) or None
                 )
-                audio_path = self._extract_audio_from_field(flds_raw, media_mapping)
+                audio_paths = self._extract_audio_from_field(flds_raw, media_mapping)
                 tag_list = [t for t in (tags or "").split() if t]
 
                 documents.append(
@@ -164,7 +164,7 @@ class AnkiParser:
                         source=source,
                         deck=deck_name,
                         tags=tag_list,
-                        audio_path=audio_path,
+                        audio_paths=audio_paths,
                     )
                 )
         finally:
@@ -191,17 +191,18 @@ class AnkiParser:
         """HTML 태그 제거"""
         return BeautifulSoup(text, "html.parser").get_text().strip()
 
-    def _extract_audio_from_field(self, flds: str, media_mapping: dict) -> Optional[str]:
-        """필드에서 [sound:filename] 패턴 추출"""
+    def _extract_audio_from_field(self, flds: str, media_mapping: dict) -> list[str]:
+        """필드에서 [sound:filename] 패턴을 모두 추출 (중복 제거)"""
         pattern = r"\[sound:([^\]]+)\]"
-        match = re.search(pattern, flds)
-        if match:
-            filename = match.group(1)
-            # media_mapping에서 해당 파일 경로 찾기
-            for num, path in media_mapping.items():
-                if filename in path:
-                    return path
-        return None
+        filenames = re.findall(pattern, flds)
+        paths: list[str] = []
+        seen: set[str] = set()
+        for filename in filenames:
+            for _num, path in media_mapping.items():
+                if filename in path and path not in seen:
+                    seen.add(path)
+                    paths.append(path)
+        return paths
 
 
 class TextParser:

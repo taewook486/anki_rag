@@ -103,9 +103,9 @@ def search(query: str, source: str, deck: str, top_k: int, play_audio: bool):
             click.echo(f"예문: {doc.example}")
         click.echo(f"점수: {result.score:.3f} | 출처: {doc.source}")
 
-        if play_audio and doc.audio_path:
+        if play_audio and doc.audio_paths:
             player = AudioPlayer()
-            player.play(doc.audio_path)
+            player.play(doc.audio_paths[0])
 
 
 @cli.command()
@@ -135,9 +135,9 @@ def query(question: str, source: str, deck: str, top_k: int, play_audio: bool, u
         answer = rag.query(question, top_k=top_k, source_filter=source, deck_filter=deck)
         click.echo(f"\n답변:\n{answer}")
 
-    if play_audio and rag.last_results and rag.last_results[0].document.audio_path:
+    if play_audio and rag.last_results and rag.last_results[0].document.audio_paths:
         player = AudioPlayer()
-        player.play(rag.last_results[0].document.audio_path)
+        player.play(rag.last_results[0].document.audio_paths[0])
 
 
 _CHAT_MAX_HISTORY_TURNS = 10  # 유지할 최대 대화 쌍 수
@@ -180,9 +180,9 @@ def chat(use_stream: bool):
                 history = history[-(_CHAT_MAX_HISTORY_TURNS * 2):]
 
             # 오디오 재생 (last_results 재사용 — 중복 검색 없음)
-            if rag.last_results and rag.last_results[0].document.audio_path:
+            if rag.last_results and rag.last_results[0].document.audio_paths:
                 if click.confirm("발음 듣기?"):
-                    player.play(rag.last_results[0].document.audio_path)
+                    player.play(rag.last_results[0].document.audio_paths[0])
 
     except KeyboardInterrupt:
         click.echo("\n종료합니다.")

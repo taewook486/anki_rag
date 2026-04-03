@@ -1,7 +1,7 @@
 """데이터 모델 - Pydantic 기반"""
 
-from typing import Optional
-from pydantic import BaseModel, Field
+from typing import Any, Optional
+from pydantic import BaseModel, Field, model_validator
 
 
 class Document(BaseModel):
@@ -19,9 +19,19 @@ class Document(BaseModel):
     example_translation: Optional[str] = Field(None, description="예문 번역")
     tags: list[str] = Field(default_factory=list, description="태그 목록")
     note_type: Optional[str] = Field(None, description="노트 타입 (Simple Model, Basic 등)")
-    audio_path: Optional[str] = Field(None, description="오디오 파일 경로")
+    audio_paths: list[str] = Field(default_factory=list, description="오디오 파일 경로 목록")
     difficulty: Optional[str] = Field(None, description="난이도 (beginner/intermediate/advanced)")
     synonyms: list[str] = Field(default_factory=list, description="동의어 목록")
+
+    @model_validator(mode="before")
+    @classmethod
+    def migrate_audio_path(cls, data: Any) -> Any:
+        """기존 audio_path(단수)를 audio_paths(복수)로 변환 — 하위 호환"""
+        if isinstance(data, dict):
+            old = data.pop("audio_path", None)
+            if old and not data.get("audio_paths"):
+                data["audio_paths"] = [old]
+        return data
 
 
 class SearchResult(BaseModel):

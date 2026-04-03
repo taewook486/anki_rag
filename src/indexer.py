@@ -100,7 +100,7 @@ class QdrantIndexer:
                         "deck": doc.deck,
                         "tags": doc.tags,
                         "note_type": doc.note_type,
-                        "audio_path": doc.audio_path,
+                        "audio_paths": doc.audio_paths,
                         "difficulty": doc.difficulty,
                         "synonyms": doc.synonyms,
                     },
