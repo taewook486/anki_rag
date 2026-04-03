@@ -6,23 +6,20 @@ from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, Field
 from typing import Optional, List
 
-from src.retriever import HybridRetriever
 from src.rag import RAGPipeline
+from src.api.routes.search import get_retriever
 
 router = APIRouter()
 
 # 전역 인스턴스 (싱글톤)
-_retriever: Optional[HybridRetriever] = None
 _rag: Optional[RAGPipeline] = None
 
 
 def get_rag() -> RAGPipeline:
-    """RAGPipeline 인스턴스 반환 (lazy initialization)"""
-    global _retriever, _rag
+    """RAGPipeline 인스턴스 반환 (lazy initialization, retriever 공유)"""
+    global _rag
     if _rag is None:
-        location = os.getenv("QDRANT_LOCATION", "./qdrant_data")
-        _retriever = HybridRetriever(location=location)
-        _rag = RAGPipeline(retriever=_retriever)
+        _rag = RAGPipeline(retriever=get_retriever())
     return _rag
 
 
@@ -65,11 +62,15 @@ async def query(request: QueryRequest) -> QueryResponse:
             source_filter=request.source_filter
         )
 
-        # 검색 결과로부터 출처 추출
+        # 검색 결과로부터 출처 추출 — RAG와 동일한 쿼리 전처리·필터 적용
+        from src.rag import RAGPipeline
+        search_query = RAGPipeline._extract_search_query(request.question)
         search_results = rag.retriever.search(
-            query=request.question,
+            query=search_query,
             top_k=request.top_k,
-            source_filter=request.source_filter
+            source_filter=request.source_filter,
+            exclude_sources=["sentences"],
+            deduplicate=True,
         )
         
         sources = [

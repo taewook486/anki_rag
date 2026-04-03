@@ -28,6 +28,8 @@ class SearchRequest(BaseModel):
     query: str = Field(..., description="검색어", min_length=1)
     top_k: int = Field(10, description="반환할 결과 수", ge=1, le=50)
     source_filter: Optional[str] = Field(None, description="source 필터")
+    exclude_sentences: bool = Field(True, description="문장 데이터(sentences) 제외 여부")
+    deduplicate: bool = Field(True, description="동일 단어 중복 제거 여부")
 
 
 class SearchResultItem(BaseModel):
@@ -42,6 +44,7 @@ class SearchResultItem(BaseModel):
     score: float = Field(..., ge=0.0)
     rank: int
     audio_available: bool
+    audio_path: Optional[str] = None
 
 
 class SearchResponse(BaseModel):
@@ -60,10 +63,13 @@ async def search(request: SearchRequest) -> SearchResponse:
     """
     try:
         retriever = get_retriever()
+        exclude_sources = ["sentences"] if request.exclude_sentences else None
         results = retriever.search(
             query=request.query,
             top_k=request.top_k,
-            source_filter=request.source_filter
+            source_filter=request.source_filter,
+            exclude_sources=exclude_sources,
+            deduplicate=request.deduplicate,
         )
 
         # SearchResult → SearchResultItem 변환
@@ -81,6 +87,7 @@ async def search(request: SearchRequest) -> SearchResponse:
                 score=result.score,
                 rank=result.rank,
                 audio_available=doc.audio_path is not None,
+                audio_path=doc.audio_path,
             ))
 
         return SearchResponse(results=search_results)

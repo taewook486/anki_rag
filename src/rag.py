@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import logging
 import os
+import re
 from typing import Optional, Iterator, Protocol, runtime_checkable
 
 from openai import OpenAI
@@ -271,9 +272,17 @@ class RAGPipeline:
         Returns:
             답변 텍스트
         """
-        # 문서 검색
+        # 자연어 질문에서 영어 키워드를 추출하여 검색 쿼리로 사용
+        search_query = self._extract_search_query(question)
+
+        # 문서 검색 — sentences 제외, 중복 제거 적용
         search_results = self.retriever.search(
-            question, top_k=top_k, source_filter=source_filter, deck_filter=deck_filter
+            search_query,
+            top_k=top_k,
+            source_filter=source_filter,
+            deck_filter=deck_filter,
+            exclude_sources=["sentences"],
+            deduplicate=True,
         )
         self.last_results = search_results
 
@@ -294,6 +303,23 @@ class RAGPipeline:
             model=self.model,
             max_tokens=self.max_tokens,
         )
+
+    @staticmethod
+    def _extract_search_query(question: str) -> str:
+        """자연어 질문에서 검색에 사용할 영어 키워드를 추출
+
+        "abandon과 유사한 단어들 비교해줘" → "abandon"
+        "give up의 뜻은?" → "give up"
+        "abandon vs forsake" → "abandon forsake"
+        영어 단어가 없으면 원본 질문 반환.
+        """
+        # 영어 단어/구문 추출 (2글자 이상, 연속 영문+공백 허용)
+        english_tokens = re.findall(r"[a-zA-Z][a-zA-Z\s'-]{1,}", question)
+        # 각 토큰 정리 (앞뒤 공백, 소문자 비교용)
+        cleaned = [t.strip() for t in english_tokens if t.strip()]
+        if cleaned:
+            return " ".join(cleaned)
+        return question
 
     def _build_context(self, search_results: list) -> str:
         """검색 결과로 컨텍스트 구성

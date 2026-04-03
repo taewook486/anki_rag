@@ -129,7 +129,7 @@ def show_chat_page():
                     response = requests.post(
                         f"{API_BASE_URL}/api/query",
                         json={"question": prompt, "top_k": 5, "source_filter": None},
-                        timeout=30,
+                        timeout=120,
                     )
                     response.raise_for_status()
                     data = response.json()
