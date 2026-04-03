@@ -149,8 +149,11 @@ def _run_indexing(data_dir: str, source: str | None, recreate: bool) -> None:
         indexer.create_collection(recreate=recreate)
         indexer.upsert(all_documents, all_embeddings)
 
+        # 인덱싱 완료 후 캐시 무효화
+        from src.cache import clear_all_caches
+        cleared = clear_all_caches()
         update(status="done", progress=1.0, indexed=len(all_documents),
-               message=f"인덱싱 완료: {len(all_documents)}개 문서")
+               message=f"인덱싱 완료: {len(all_documents)}개 문서 (캐시 {cleared}건 초기화)")
 
     except Exception as e:
         update(status="error", error=str(e), message="인덱싱 실패")

@@ -237,6 +237,42 @@ def show_admin_page():
             _trigger_indexing(data_dir, recreate)
 
     st.markdown("---")
+
+    st.subheader("캐시 관리")
+    try:
+        cache_resp = requests.get(f"{API_BASE_URL}/api/cache/stats", timeout=5)
+        if cache_resp.status_code == 200:
+            cache_data = cache_resp.json()
+
+            col_s, col_p = st.columns(2)
+            with col_s:
+                s = cache_data.get("search_cache", {})
+                st.markdown("**검색 캐시 (Level 1)**")
+                st.metric("엔트리", s.get("total_entries", 0))
+                st.metric("적중률", f"{s.get('hit_rate', 0) * 100:.1f}%")
+                st.caption(f"Hit: {s.get('hit_count', 0)} / Miss: {s.get('miss_count', 0)}")
+            with col_p:
+                p = cache_data.get("pipeline_cache", {})
+                st.markdown("**파이프라인 캐시 (Level 2)**")
+                st.metric("엔트리", p.get("total_entries", 0))
+                st.metric("적중률", f"{p.get('hit_rate', 0) * 100:.1f}%")
+                st.caption(f"Hit: {p.get('hit_count', 0)} / Miss: {p.get('miss_count', 0)}")
+
+            if st.button("캐시 초기화", type="secondary"):
+                try:
+                    clear_resp = requests.delete(f"{API_BASE_URL}/api/cache", timeout=5)
+                    if clear_resp.status_code == 200:
+                        result = clear_resp.json()
+                        st.success(f"캐시 초기화 완료: {result.get('cleared_entries', 0)}건 제거")
+                        st.rerun()
+                    else:
+                        st.error("캐시 초기화 실패")
+                except requests.exceptions.RequestException as e:
+                    st.error(f"캐시 초기화 실패: {e}")
+    except requests.exceptions.RequestException:
+        st.warning("캐시 통계를 불러올 수 없습니다")
+
+    st.markdown("---")
     st.subheader("서버 정보")
     st.info(f"API 엔드포인트: {API_BASE_URL}")
     st.info("API 문서: [http://127.0.0.1:8000/docs](http://127.0.0.1:8000/docs)")

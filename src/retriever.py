@@ -1,5 +1,6 @@
 """리트리버 - 하이브리드 검색 (Dense + Sparse + RRF)"""
 
+import logging
 from typing import Optional
 from qdrant_client import QdrantClient
 from qdrant_client.models import (
@@ -15,6 +16,9 @@ from qdrant_client.models import (
 
 from src.models import Document, SearchResult
 from src.embedder import BGEEmbedder
+from src.cache import get_search_cache, make_cache_key
+
+logger = logging.getLogger(__name__)
 
 
 class HybridRetriever:
@@ -94,6 +98,17 @@ class HybridRetriever:
         Returns:
             SearchResult 리스트
         """
+        # Level 1 캐시 조회
+        cache = get_search_cache()
+        cache_key = make_cache_key(
+            query=query, top_k=top_k, source_filter=source_filter,
+            deck_filter=deck_filter, exclude_sources=exclude_sources,
+            deduplicate=deduplicate,
+        )
+        cached = cache.get(cache_key)
+        if cached is not None:
+            return cached
+
         # 쿼리 임베딩 — query instruction prefix 적용
         query_result = self.embedder.embed_query(query)
         query_dense: list[float] = query_result.dense_vector
@@ -145,6 +160,9 @@ class HybridRetriever:
         # rank 재부여
         for i, r in enumerate(results, 1):
             r.rank = i
+
+        # Level 1 캐시 저장
+        cache.set(cache_key, results)
 
         return results
 

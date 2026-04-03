@@ -10,6 +10,7 @@ from typing import Optional, Iterator, Protocol, runtime_checkable
 from openai import OpenAI
 
 from src.retriever import HybridRetriever
+from src.cache import get_pipeline_cache, make_cache_key
 
 logger = logging.getLogger(__name__)
 
@@ -272,6 +273,19 @@ class RAGPipeline:
         Returns:
             답변 텍스트
         """
+        # Level 2 캐시 조회 (history=None, stream=False일 때만)
+        pipeline_cache = get_pipeline_cache()
+        use_cache = history is None and not stream
+        cache_key = ""
+        if use_cache:
+            cache_key = make_cache_key(
+                question=question, top_k=top_k,
+                source_filter=source_filter, deck_filter=deck_filter,
+            )
+            cached = pipeline_cache.get(cache_key)
+            if cached is not None:
+                return cached
+
         # 자연어 질문에서 영어 키워드를 추출하여 검색 쿼리로 사용
         search_query = self._extract_search_query(question)
 
@@ -298,11 +312,17 @@ class RAGPipeline:
         # LLM 호출
         if stream:
             return self._stream_response(messages, on_chunk=on_chunk)
-        return self.provider.generate(
+        answer = self.provider.generate(
             messages=messages,
             model=self.model,
             max_tokens=self.max_tokens,
         )
+
+        # Level 2 캐시 저장
+        if use_cache:
+            pipeline_cache.set(cache_key, answer)
+
+        return answer
 
     @staticmethod
     def _extract_search_query(question: str) -> str:

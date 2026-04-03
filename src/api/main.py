@@ -5,7 +5,7 @@ load_dotenv()
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from src.api.routes import search, query, audio, index
+from src.api.routes import search, query, audio, index, cache
 
 app = FastAPI(
     title="Anki RAG API",
@@ -27,6 +27,7 @@ app.include_router(search.router, prefix="/api", tags=["search"])
 app.include_router(query.router, prefix="/api", tags=["query"])
 app.include_router(audio.router, prefix="/api", tags=["audio"])
 app.include_router(index.router, prefix="/api", tags=["index"])
+app.include_router(cache.router, prefix="/api", tags=["cache"])
 
 
 @app.get("/")
