@@ -1,249 +1,232 @@
-"""MD → DOCX → HWP 변환 스크립트
+"""MD → DOCX 변환 스크립트
 
-python-docx로 DOCX를 생성한 후 HWP COM으로 HWP로 변환합니다.
-HWP COM의 HTML 열기는 EUC-KR 인코딩 문제가 있으므로
-DOCX 경유 방식을 사용합니다.
+pandoc으로 DOCX를 생성하고, 테이블 테두리를 적용한 후
+HWP에서 열어 HWP로 저장합니다.
+사용법:
+  py -3 md_to_hwp.py           # doc/설계서.md → doc/설계서.docx
+  py -3 md_to_hwp.py path/to/file.md
+  py -3 md_to_hwp.py --no-open # HWP 자동 실행 없이 DOCX만 생성
 """
 
-import re
-import sys
+import argparse
+import copy
+import os
+import shutil
+import subprocess
+import winreg
+import zipfile
 from pathlib import Path
 
-from docx import Document
-from docx.enum.text import WD_ALIGN_PARAGRAPH
-from docx.oxml.ns import qn
-from docx.oxml import OxmlElement
-from docx.shared import Pt, RGBColor
-import win32com.client
+from lxml import etree
+
+W_NS = "http://schemas.openxmlformats.org/wordprocessingml/2006/main"
+W = f"{{{W_NS}}}"
+_BORDER_SIDES = ("top", "left", "bottom", "right", "insideH", "insideV")
 
 
 # ─────────────────────────────────────────
-# MD → DOCX
+# pandoc 경로 탐색
 # ─────────────────────────────────────────
 
-def _set_heading_style(para, level: int) -> None:
-    """헤딩 스타일 설정 (h1~h4)"""
-    style_map = {1: "Heading 1", 2: "Heading 2", 3: "Heading 3", 4: "Heading 4"}
-    try:
-        para.style = style_map.get(level, "Heading 4")
-    except KeyError:
-        pass  # 스타일 없으면 기본값 유지
+def _find_pandoc() -> str:
+    """시스템에서 pandoc 실행 파일 경로를 반환합니다."""
+    p = shutil.which("pandoc")
+    if p:
+        return p
 
+    def _reg_path(hive, key):
+        try:
+            k = winreg.OpenKey(hive, key)
+            v, _ = winreg.QueryValueEx(k, "Path")
+            return v
+        except Exception:
+            return ""
 
-def _add_run_with_inline(para, text: str) -> None:
-    """**bold**, `code` 인라인 마크업을 처리하여 run 추가"""
-    # **bold** 와 `code` 인라인 파싱
-    pattern = re.compile(r"\*\*(.+?)\*\*|`([^`]+)`")
-    cursor = 0
-    for m in pattern.finditer(text):
-        # 일반 텍스트
-        if m.start() > cursor:
-            para.add_run(text[cursor : m.start()])
-        if m.group(1) is not None:
-            run = para.add_run(m.group(1))
-            run.bold = True
-        else:
-            run = para.add_run(m.group(2))
-            run.font.name = "Courier New"
-            run.font.size = Pt(9)
-        cursor = m.end()
-    if cursor < len(text):
-        para.add_run(text[cursor:])
+    reg_paths = (
+        _reg_path(winreg.HKEY_LOCAL_MACHINE,
+                  r"SYSTEM\CurrentControlSet\Control\Session Manager\Environment")
+        + ";"
+        + _reg_path(winreg.HKEY_CURRENT_USER, r"Environment")
+    )
 
-
-def _add_horizontal_rule(doc: Document) -> None:
-    """수평선 단락 추가"""
-    para = doc.add_paragraph()
-    pPr = para._p.get_or_add_pPr()
-    pBdr = OxmlElement("w:pBdr")
-    bottom = OxmlElement("w:bottom")
-    bottom.set(qn("w:val"), "single")
-    bottom.set(qn("w:sz"), "6")
-    bottom.set(qn("w:space"), "1")
-    bottom.set(qn("w:color"), "999999")
-    pBdr.append(bottom)
-    pPr.append(pBdr)
-
-
-def _parse_table(doc: Document, lines: list[str], start: int) -> int:
-    """마크다운 테이블 파싱 후 DOCX 테이블 생성. 종료 인덱스 반환."""
-    rows = []
-    i = start
-    while i < len(lines):
-        line = lines[i].strip()
-        if not line.startswith("|"):
-            break
-        # 구분자 줄 스킵
-        if re.match(r"^\|[-: |]+\|$", line):
-            i += 1
+    for segment in reg_paths.split(";"):
+        segment = os.path.expandvars(segment.strip())
+        if not segment:
             continue
-        cells = [c.strip() for c in line.strip("|").split("|")]
-        rows.append(cells)
-        i += 1
+        candidate = os.path.join(segment, "pandoc.exe")
+        if os.path.exists(candidate):
+            return candidate
 
-    if not rows:
-        return start + 1
-
-    col_count = max(len(r) for r in rows)
-    table = doc.add_table(rows=len(rows), cols=col_count)
-    table.style = "Table Grid"
-
-    for r_idx, row_data in enumerate(rows):
-        row = table.rows[r_idx]
-        for c_idx, cell_text in enumerate(row_data):
-            if c_idx >= col_count:
-                break
-            cell = row.cells[c_idx]
-            cell.text = ""
-            p = cell.paragraphs[0]
-            _add_run_with_inline(p, cell_text)
-            if r_idx == 0:
-                for run in p.runs:
-                    run.bold = True
-
-    return i
-
-
-def md_to_docx(md_path: Path, docx_path: Path) -> None:
-    """마크다운 파일을 DOCX로 변환"""
-    text = md_path.read_text(encoding="utf-8")
-    lines = text.splitlines()
-
-    doc = Document()
-
-    # 기본 폰트 설정
-    style = doc.styles["Normal"]
-    style.font.name = "맑은 고딕"
-    style.font.size = Pt(10)
-
-    in_code_block = False
-    code_lines: list[str] = []
-    i = 0
-
-    while i < len(lines):
-        line = lines[i]
-
-        # ── 코드 블록 ──
-        if line.strip().startswith("```"):
-            if not in_code_block:
-                in_code_block = True
-                code_lines = []
-            else:
-                # 코드 블록 종료 → 일괄 추가
-                in_code_block = False
-                if code_lines:
-                    para = doc.add_paragraph()
-                    para.style = "No Spacing" if "No Spacing" in [s.name for s in doc.styles] else "Normal"
-                    run = para.add_run("\n".join(code_lines))
-                    run.font.name = "Courier New"
-                    run.font.size = Pt(8)
-                    # 회색 배경은 DOCX 수준에서 생략 (HWP에서 랜더링 복잡도)
-            i += 1
-            continue
-
-        if in_code_block:
-            code_lines.append(line)
-            i += 1
-            continue
-
-        stripped = line.strip()
-
-        # ── 빈 줄 ──
-        if not stripped:
-            doc.add_paragraph()
-            i += 1
-            continue
-
-        # ── 수평선 ──
-        if re.match(r"^-{3,}$", stripped) or re.match(r"^={3,}$", stripped):
-            _add_horizontal_rule(doc)
-            i += 1
-            continue
-
-        # ── 헤딩 ──
-        heading_m = re.match(r"^(#{1,6})\s+(.+)", stripped)
-        if heading_m:
-            level = len(heading_m.group(1))
-            title_text = heading_m.group(2)
-            para = doc.add_paragraph()
-            _set_heading_style(para, min(level, 4))
-            _add_run_with_inline(para, title_text)
-            i += 1
-            continue
-
-        # ── 테이블 ──
-        if stripped.startswith("|"):
-            i = _parse_table(doc, lines, i)
-            continue
-
-        # ── 목록 ──
-        list_m = re.match(r"^(\s*)([-*+]|\d+\.)\s+(.+)", line)
-        if list_m:
-            indent = len(list_m.group(1))
-            content = list_m.group(3)
-            style_name = "List Bullet" if re.match(r"[-*+]", list_m.group(2)) else "List Number"
-            try:
-                para = doc.add_paragraph(style=style_name)
-            except KeyError:
-                para = doc.add_paragraph()
-            _add_run_with_inline(para, content)
-            i += 1
-            continue
-
-        # ── 일반 단락 ──
-        para = doc.add_paragraph()
-        _add_run_with_inline(para, stripped)
-        i += 1
-
-    doc.save(str(docx_path))
-    print(f"DOCX 저장 완료: {docx_path}")
+    raise FileNotFoundError(
+        "pandoc을 찾을 수 없습니다.\n"
+        "https://pandoc.org/installing.html 에서 설치 후 재시도하세요."
+    )
 
 
 # ─────────────────────────────────────────
-# DOCX → HWP (COM 자동화)
+# HWP 실행 파일 탐색
 # ─────────────────────────────────────────
 
-def docx_to_hwp(docx_path: Path, hwp_path: Path) -> None:
-    """HWP COM으로 DOCX → HWP 변환"""
-    hwp = win32com.client.Dispatch("HWPFrame.HwpObject")
-    hwp.XHwpWindows.Item(0).Visible = True  # 창 표시 (디버깅 용이)
+def _find_hwp() -> str | None:
+    """HWP 실행 파일 경로를 반환합니다. 없으면 None."""
+    candidates = [
+        r"C:\Program Files (x86)\HNC\Office 2018\HOffice100\Bin\Hwp.exe",
+        r"C:\Program Files (x86)\HNC\Office 2020\HOffice110\Bin\Hwp.exe",
+        r"C:\Program Files\HNC\Office 2022\HOffice120\Bin\Hwp.exe",
+        r"C:\Program Files\HNC\Office NEO\HOffice90\Bin\Hwp.exe",
+    ]
+    for path in candidates:
+        if os.path.exists(path):
+            return path
+    return None
 
-    try:
-        hwp.RegisterModule("FilePathCheckDLL", "FilePathCheckerModule")
-    except Exception:
-        pass  # 모듈 등록 실패 시 무시
 
-    # DOCX 파일 열기 (절대 경로 필요)
+# ─────────────────────────────────────────
+# DOCX 테이블 테두리 후처리 (lxml + zipfile)
+# python-docx 방식은 로드/저장 시 XML 손상 위험이 있으므로
+# ZIP을 직접 열어 document.xml만 수정합니다.
+# ─────────────────────────────────────────
+
+def _make_tc_borders() -> etree._Element:
+    """tcBorders XML 요소를 생성합니다."""
+    borders = etree.Element(f"{W}tcBorders")
+    for side in _BORDER_SIDES:
+        el = etree.SubElement(borders, f"{W}{side}")
+        el.set(f"{W}val", "single")
+        el.set(f"{W}sz", "4")
+        el.set(f"{W}space", "0")
+        el.set(f"{W}color", "000000")
+    return borders
+
+
+def _patch_document_xml(xml_bytes: bytes) -> bytes:
+    """document.xml의 모든 테이블에 테두리를 추가하고 width=0 테이블을 수정합니다."""
+    root = etree.fromstring(xml_bytes)
+    borders_template = _make_tc_borders()
+
+    for tbl in root.iter(f"{W}tbl"):
+        # width=0 테이블을 페이지 폭 100%로 수정 (HWP/Word에서 안 보이는 문제 해결)
+        tblPr = tbl.find(f"{W}tblPr")
+        if tblPr is not None:
+            tblW = tblPr.find(f"{W}tblW")
+            if tblW is not None and tblW.get(f"{W}w") == "0":
+                tblW.set(f"{W}type", "pct")
+                tblW.set(f"{W}w", "5000")
+
+        # 셀 테두리 적용
+        for tc in tbl.iter(f"{W}tc"):
+            tcPr = tc.find(f"{W}tcPr")
+            if tcPr is None:
+                tcPr = etree.Element(f"{W}tcPr")
+                tc.insert(0, tcPr)
+
+            for old in tcPr.findall(f"{W}tcBorders"):
+                tcPr.remove(old)
+
+            tcPr.insert(0, copy.deepcopy(borders_template))
+
+    return etree.tostring(root, xml_declaration=True, encoding="UTF-8", standalone=True)
+
+
+def _apply_table_borders(docx_path: Path) -> None:
+    """DOCX ZIP 내 document.xml을 직접 수정해 테이블 테두리를 추가합니다."""
+    tmp_path = docx_path.with_suffix(".tmp.docx")
+
+    with zipfile.ZipFile(docx_path, "r") as zin, \
+         zipfile.ZipFile(tmp_path, "w", zipfile.ZIP_DEFLATED) as zout:
+        for item in zin.infolist():
+            data = zin.read(item.filename)
+            if item.filename == "word/document.xml":
+                data = _patch_document_xml(data)
+            zout.writestr(item, data)
+
+    docx_path.unlink()
+    tmp_path.rename(docx_path)
+
+
+# ─────────────────────────────────────────
+# MD → DOCX (pandoc)
+# ─────────────────────────────────────────
+
+def md_to_docx(md_path: Path, docx_path: Path, pandoc: str) -> None:
+    """pandoc으로 마크다운 파일을 DOCX로 변환합니다."""
+    cmd = [
+        pandoc,
+        str(md_path),
+        "-o", str(docx_path),
+        "--standalone",
+    ]
+    result = subprocess.run(cmd, capture_output=True, text=True)
+    if result.returncode != 0:
+        raise RuntimeError(f"pandoc 변환 실패:\n{result.stderr}")
+    print(f"pandoc 변환 완료: {docx_path}")
+
+    _apply_table_borders(docx_path)
+    print(f"테이블 테두리 적용 완료: {docx_path}")
+
+
+# ─────────────────────────────────────────
+# HWP에서 DOCX 열기
+# ─────────────────────────────────────────
+
+def open_in_hwp(docx_path: Path, hwp_exe: str) -> None:
+    """DOCX 파일을 HWP에서 엽니다."""
     abs_docx = str(docx_path.resolve())
-    abs_hwp = str(hwp_path.resolve())
-
-    print(f"HWP에서 DOCX 열기: {abs_docx}")
-    # 포맷 "" = 확장자 자동 감지 (DOCX 포맷 문자열이 HWP 버전마다 다름)
-    result = hwp.Open(abs_docx, "", "forceopen:true")
-    print(f"Open 반환값: {result}")
-
-    print(f"HWP 파일로 저장: {abs_hwp}")
-    hwp.SaveAs(abs_hwp, "HWP", "")
-
-    hwp.Quit()
-    print("변환 완료!")
+    print(f"HWP에서 열기: {abs_docx}")
+    subprocess.Popen([hwp_exe, abs_docx])
+    print("HWP가 실행되었습니다.")
+    print("파일 > 다른 이름으로 저장 > HWP 형식으로 저장하세요.")
 
 
 # ─────────────────────────────────────────
 # 메인
 # ─────────────────────────────────────────
 
-if __name__ == "__main__":
+def main() -> None:
+    parser = argparse.ArgumentParser(description="MD → DOCX 변환 (pandoc) + HWP에서 열기")
+    parser.add_argument(
+        "md_file",
+        nargs="?",
+        default=None,
+        help="변환할 .md 파일 경로 (기본값: doc/설계서.md)",
+    )
+    parser.add_argument(
+        "--no-open",
+        action="store_true",
+        help="변환 후 HWP 자동 실행 안 함 (DOCX만 생성)",
+    )
+    args = parser.parse_args()
+
     base = Path(__file__).parent
-    md_path = base / "설계서.md"
-    docx_path = base / "설계서_temp.docx"
-    hwp_path = base / "설계서.hwp"
+
+    if args.md_file:
+        md_path = Path(args.md_file)
+    else:
+        md_path = base / "설계서.md"
+
+    docx_path = md_path.with_suffix(".docx")
+
+    pandoc = _find_pandoc()
+    print(f"pandoc: {pandoc}")
 
     print("=== MD → DOCX ===")
-    md_to_docx(md_path, docx_path)
+    md_to_docx(md_path, docx_path, pandoc)
 
-    print("\n=== DOCX → HWP ===")
-    docx_to_hwp(docx_path, hwp_path)
+    if args.no_open:
+        print(f"\n완료: {docx_path}")
+        print("한글(HWP)에서 위 파일을 열고 HWP 형식으로 저장하세요.")
+        return
 
-    print(f"\n완료: {hwp_path}")
-    print("※ 설계서_temp.docx 는 검증용으로 남겨둡니다.")
+    print("\n=== HWP에서 열기 ===")
+    hwp_exe = _find_hwp()
+    if hwp_exe:
+        open_in_hwp(docx_path, hwp_exe)
+    else:
+        print("HWP 실행 파일을 찾을 수 없습니다.")
+        print(f"직접 HWP에서 열어주세요: {docx_path}")
+
+    print(f"\n생성된 파일: {docx_path}")
+
+
+if __name__ == "__main__":
+    main()

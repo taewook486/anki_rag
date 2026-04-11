@@ -75,6 +75,9 @@ class HybridRetriever:
 
     # @MX:ANCHOR: 하이브리드 검색 공개 진입점
     # @MX:REASON: [AUTO] RAGPipeline.query(), api/routes/search.py, __main__.py 에서 호출
+    # RRF 최소 점수 기준: Dense+Sparse 양쪽 상위 20위 이내 ≈ 0.025
+    DEFAULT_MIN_SCORE = 0.025
+
     def search(
         self,
         query: str,
@@ -83,6 +86,7 @@ class HybridRetriever:
         deck_filter: Optional[str] = None,
         exclude_sources: Optional[list[str]] = None,
         deduplicate: bool = True,
+        min_score: Optional[float] = None,
     ) -> list[SearchResult]:
         """
         하이브리드 검색 (Dense + Sparse RRF Fusion)
@@ -94,6 +98,7 @@ class HybridRetriever:
             deck_filter: deck 필터 (선택)
             exclude_sources: 제외할 source 목록 (예: ["sentences"])
             deduplicate: word 기준 중복 제거 여부
+            min_score: 최소 점수 임계값 (미달 결과 제외, 기본 0.025)
 
         Returns:
             SearchResult 리스트
@@ -103,7 +108,7 @@ class HybridRetriever:
         cache_key = make_cache_key(
             query=query, top_k=top_k, source_filter=source_filter,
             deck_filter=deck_filter, exclude_sources=exclude_sources,
-            deduplicate=deduplicate,
+            deduplicate=deduplicate, min_score=min_score,
         )
         cached = cache.get(cache_key)
         if cached is not None:
@@ -152,6 +157,10 @@ class HybridRetriever:
         # word 기준 중복 제거
         if deduplicate:
             results = self._deduplicate_by_word(results)
+
+        # 최소 점수 필터링 — 무관한 결과 제거
+        threshold = min_score if min_score is not None else self.DEFAULT_MIN_SCORE
+        results = [r for r in results if r.score >= threshold]
 
         # 점수 재정렬 후 top_k 반환
         results.sort(key=lambda r: r.score, reverse=True)

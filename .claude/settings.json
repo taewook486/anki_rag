@@ -1,189 +1,5 @@
 {
-  "hooks": {
-    "SessionStart": [
-      {
-        "hooks": [
-          {
-            "command": "\"$CLAUDE_PROJECT_DIR/.claude/hooks/moai/handle-session-start.sh\"",
-            "timeout": 30,
-            "type": "command"
-          }
-        ]
-      }
-    ],
-    "PreCompact": [
-      {
-        "hooks": [
-          {
-            "command": "\"$CLAUDE_PROJECT_DIR/.claude/hooks/moai/handle-compact.sh\"",
-            "timeout": 5,
-            "type": "command"
-          }
-        ]
-      }
-    ],
-    "SessionEnd": [
-      {
-        "hooks": [
-          {
-            "command": "\"$CLAUDE_PROJECT_DIR/.claude/hooks/moai/handle-session-end.sh\"",
-            "timeout": 10,
-            "type": "command"
-          }
-        ]
-      }
-    ],
-    "PreToolUse": [
-      {
-        "hooks": [
-          {
-            "command": "\"$CLAUDE_PROJECT_DIR/.claude/hooks/moai/handle-pre-tool.sh\"",
-            "timeout": 5,
-            "type": "command"
-          }
-        ],
-        "matcher": "Write|Edit|Bash"
-      }
-    ],
-    "PostToolUse": [
-      {
-        "hooks": [
-          {
-            "command": "\"$CLAUDE_PROJECT_DIR/.claude/hooks/moai/handle-post-tool.sh\"",
-            "timeout": 60,
-            "type": "command"
-          }
-        ],
-        "matcher": "Write|Edit"
-      }
-    ],
-    "Stop": [
-      {
-        "hooks": [
-          {
-            "command": "\"$CLAUDE_PROJECT_DIR/.claude/hooks/moai/handle-stop.sh\"",
-            "timeout": 5,
-            "type": "command"
-          }
-        ]
-      }
-    ],
-    "SubagentStop": [
-      {
-        "hooks": [
-          {
-            "command": "\"$CLAUDE_PROJECT_DIR/.claude/hooks/moai/handle-subagent-stop.sh\"",
-            "timeout": 5,
-            "type": "command"
-          }
-        ]
-      }
-    ],
-    "PostToolUseFailure": [
-      {
-        "hooks": [
-          {
-            "command": "\"$CLAUDE_PROJECT_DIR/.claude/hooks/moai/handle-post-tool-failure.sh\"",
-            "timeout": 5,
-            "type": "command"
-          }
-        ]
-      }
-    ],
-    "Notification": [
-      {
-        "hooks": [
-          {
-            "command": "\"$CLAUDE_PROJECT_DIR/.claude/hooks/moai/handle-notification.sh\"",
-            "timeout": 5,
-            "type": "command"
-          }
-        ]
-      }
-    ],
-    "SubagentStart": [
-      {
-        "hooks": [
-          {
-            "command": "\"$CLAUDE_PROJECT_DIR/.claude/hooks/moai/handle-subagent-start.sh\"",
-            "timeout": 5,
-            "type": "command"
-          }
-        ]
-      }
-    ],
-    "UserPromptSubmit": [
-      {
-        "hooks": [
-          {
-            "command": "\"$CLAUDE_PROJECT_DIR/.claude/hooks/moai/handle-user-prompt-submit.sh\"",
-            "timeout": 5,
-            "type": "command"
-          }
-        ]
-      }
-    ],
-    "PermissionRequest": [
-      {
-        "hooks": [
-          {
-            "command": "\"$CLAUDE_PROJECT_DIR/.claude/hooks/moai/handle-permission-request.sh\"",
-            "timeout": 5,
-            "type": "command"
-          }
-        ]
-      }
-    ],
-    "TeammateIdle": [
-      {
-        "hooks": [
-          {
-            "command": "\"$CLAUDE_PROJECT_DIR/.claude/hooks/moai/handle-teammate-idle.sh\"",
-            "timeout": 5,
-            "type": "command"
-          }
-        ]
-      }
-    ],
-    "TaskCompleted": [
-      {
-        "hooks": [
-          {
-            "command": "\"$CLAUDE_PROJECT_DIR/.claude/hooks/moai/handle-task-completed.sh\"",
-            "timeout": 5,
-            "type": "command"
-          }
-        ]
-      }
-    ],
-    "WorktreeCreate": [
-      {
-        "hooks": [
-          {
-            "command": "\"$CLAUDE_PROJECT_DIR/.claude/hooks/moai/handle-worktree-create.sh\"",
-            "timeout": 5,
-            "type": "command"
-          }
-        ]
-      }
-    ],
-    "WorktreeRemove": [
-      {
-        "hooks": [
-          {
-            "command": "\"$CLAUDE_PROJECT_DIR/.claude/hooks/moai/handle-worktree-remove.sh\"",
-            "timeout": 5,
-            "type": "command"
-          }
-        ]
-      }
-    ]
-  },
-  "statusLine": {
-    "type": "command",
-    "command": ".moai/status_line.sh"
-  },
-  "outputStyle": "MoAI",
+  "respectGitignore": true,
   "cleanupPeriodDays": 30,
   "env": {
     "CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS": "1",
@@ -192,8 +8,11 @@
     "MOAI_CONFIG_SOURCE": "sections",
     "PATH": "C:\\Users\\taewo\\.local\\bin;C:\\Users\\taewo\\go\\bin;/usr/local/bin;/usr/local/sbin;/usr/bin;/bin;/usr/sbin;/sbin"
   },
+  "attribution": {
+    "commit": "🗿 MoAI <email@mo.ai.kr>",
+    "pr": "🗿 MoAI <email@mo.ai.kr>"
+  },
   "permissions": {
-    "defaultMode": "acceptEdits",
     "allow": [
       "AskUserQuestion",
       "BashOutput",
@@ -305,15 +124,11 @@
       "Bash(time:*)",
       "Bash(xargs:*)",
       "Bash(moai-adk:*)",
-      "Bash(moai:*)"
-    ],
-    "ask": [
-      "Bash(rm:*)",
-      "Bash(sudo:*)",
-      "Bash(chmod:*)",
-      "Bash(chown:*)",
-      "Read(./.env)",
-      "Read(./.env.*)"
+      "Bash(moai:*)",
+      "Bash(d:/project/anki_rag/.venv/Scripts/python.exe tests/eval_multilingual.py)",
+      "Bash(d:/project/anki_rag/.venv/Scripts/python.exe -c \":*)",
+      "Read(//c/Users/taewo/OneDrive/문서/건국대학교-정보통신대학원/**)",
+      "Bash(/c/Users/taewo/.local/bin/uv pip install --python d:/project/anki_rag/.venv/Scripts/python.exe pymupdf)"
     ],
     "deny": [
       "Read(./secrets/**)",
@@ -376,13 +191,202 @@
       "Bash(redis-cli FLUSHDB:*)",
       "Bash(psql -c DROP:*)",
       "Bash(mysql -e DROP:*)"
-    ]
-  },
-  "attribution": {
-    "commit": "\ud83d\uddff MoAI <email@mo.ai.kr>",
-    "pr": "\ud83d\uddff MoAI <email@mo.ai.kr>"
+    ],
+    "ask": [
+      "Bash(rm:*)",
+      "Bash(sudo:*)",
+      "Bash(chmod:*)",
+      "Bash(chown:*)",
+      "Read(./.env)",
+      "Read(./.env.*)"
+    ],
+    "defaultMode": "acceptEdits"
   },
   "enableAllProjectMcpServers": true,
-  "respectGitignore": true,
+  "hooks": {
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"$CLAUDE_PROJECT_DIR/.claude/hooks/moai/handle-session-start.sh\"",
+            "timeout": 30
+          }
+        ]
+      }
+    ],
+    "PreCompact": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"$CLAUDE_PROJECT_DIR/.claude/hooks/moai/handle-compact.sh\"",
+            "timeout": 5
+          }
+        ]
+      }
+    ],
+    "SessionEnd": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"$CLAUDE_PROJECT_DIR/.claude/hooks/moai/handle-session-end.sh\"",
+            "timeout": 10
+          }
+        ]
+      }
+    ],
+    "PreToolUse": [
+      {
+        "matcher": "Write|Edit|Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"$CLAUDE_PROJECT_DIR/.claude/hooks/moai/handle-pre-tool.sh\"",
+            "timeout": 5
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Write|Edit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"$CLAUDE_PROJECT_DIR/.claude/hooks/moai/handle-post-tool.sh\"",
+            "timeout": 60
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"$CLAUDE_PROJECT_DIR/.claude/hooks/moai/handle-stop.sh\"",
+            "timeout": 5
+          }
+        ]
+      }
+    ],
+    "SubagentStop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"$CLAUDE_PROJECT_DIR/.claude/hooks/moai/handle-subagent-stop.sh\"",
+            "timeout": 5
+          }
+        ]
+      }
+    ],
+    "PostToolUseFailure": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"$CLAUDE_PROJECT_DIR/.claude/hooks/moai/handle-post-tool-failure.sh\"",
+            "timeout": 5
+          }
+        ]
+      }
+    ],
+    "Notification": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"$CLAUDE_PROJECT_DIR/.claude/hooks/moai/handle-notification.sh\"",
+            "timeout": 5
+          }
+        ]
+      }
+    ],
+    "SubagentStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"$CLAUDE_PROJECT_DIR/.claude/hooks/moai/handle-subagent-start.sh\"",
+            "timeout": 5
+          }
+        ]
+      }
+    ],
+    "UserPromptSubmit": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"$CLAUDE_PROJECT_DIR/.claude/hooks/moai/handle-user-prompt-submit.sh\"",
+            "timeout": 5
+          }
+        ]
+      }
+    ],
+    "PermissionRequest": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"$CLAUDE_PROJECT_DIR/.claude/hooks/moai/handle-permission-request.sh\"",
+            "timeout": 5
+          }
+        ]
+      }
+    ],
+    "TeammateIdle": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"$CLAUDE_PROJECT_DIR/.claude/hooks/moai/handle-teammate-idle.sh\"",
+            "timeout": 5
+          }
+        ]
+      }
+    ],
+    "TaskCompleted": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"$CLAUDE_PROJECT_DIR/.claude/hooks/moai/handle-task-completed.sh\"",
+            "timeout": 5
+          }
+        ]
+      }
+    ],
+    "WorktreeCreate": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"$CLAUDE_PROJECT_DIR/.claude/hooks/moai/handle-worktree-create.sh\"",
+            "timeout": 5
+          }
+        ]
+      }
+    ],
+    "WorktreeRemove": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"$CLAUDE_PROJECT_DIR/.claude/hooks/moai/handle-worktree-remove.sh\"",
+            "timeout": 5
+          }
+        ]
+      }
+    ]
+  },
+  "statusLine": {
+    "type": "command",
+    "command": ".moai/status_line.sh"
+  },
+  "outputStyle": "MoAI",
   "teammateMode": "auto"
 }

@@ -13,9 +13,9 @@ constitution:
     enforce_quality: true
     lsp_integration:
         diagnostic_sources:
-            - typecheck
-            - lint
-            - security
+            - typecheck     # mypy / pyright
+            - lint          # ruff
+            - security      # bandit (선택)
         regression_detection:
             error_increase_threshold: 0
             type_error_increase_threshold: 0
@@ -27,10 +27,12 @@ constitution:
             secured:
                 - security_scan_pass
                 - lsp_security_warnings == 0
+                - no_hardcoded_api_keys
             tested:
                 - unit_tests_pass
                 - lsp_type_errors == 0
                 - lsp_errors == 0
+                - retrieval_quality_verified
             trackable:
                 - logs_structured
                 - lsp_diagnostic_history_tracked
