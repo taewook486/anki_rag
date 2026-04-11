@@ -60,7 +60,7 @@ def show_search_page():
                 response = requests.post(
                     f"{API_BASE_URL}/api/search",
                     json={"query": query, "top_k": top_k, "source_filter": None},
-                    timeout=10,
+                    timeout=60,
                 )
                 response.raise_for_status()
                 data = response.json()
@@ -162,7 +162,7 @@ def _trigger_indexing(data_dir: str, recreate: bool) -> None:
         resp = requests.post(
             f"{API_BASE_URL}/api/index",
             json={"data_dir": data_dir, "recreate": recreate},
-            timeout=5,
+            timeout=10,
         )
         if resp.status_code == 409:
             st.warning("이미 인덱싱 중입니다.")

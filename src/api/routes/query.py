@@ -55,31 +55,21 @@ async def query(request: QueryRequest) -> QueryResponse:
     try:
         rag = get_rag()
         
-        # RAG 질의 수행
+        # RAG 질의 수행 (last_results에 검색 결과 캐시됨)
         answer = rag.query(
             question=request.question,
             top_k=request.top_k,
-            source_filter=request.source_filter
+            source_filter=request.source_filter,
         )
 
-        # 검색 결과로부터 출처 추출 — RAG와 동일한 쿼리 전처리·필터 적용
-        from src.rag import RAGPipeline
-        search_query = RAGPipeline._extract_search_query(request.question)
-        search_results = rag.retriever.search(
-            query=search_query,
-            top_k=request.top_k,
-            source_filter=request.source_filter,
-            exclude_sources=["sentences"],
-            deduplicate=True,
-        )
-        
+        # last_results 재사용 — 중복 검색 방지 (설계서 Key Patterns)
         sources = [
             SourceInfo(
                 word=r.document.word,
                 source=r.document.source,
-                deck=r.document.deck or ""
+                deck=r.document.deck or "",
             )
-            for r in search_results
+            for r in rag.last_results
         ]
 
         return QueryResponse(answer=answer, sources=sources)
