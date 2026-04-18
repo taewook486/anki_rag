@@ -5,12 +5,12 @@ load_dotenv()
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from src.api.routes import search, query, audio, index, cache, agent
+from src.api.routes import search, query, audio, index, cache, agent, adaptive
 
 app = FastAPI(
     title="Anki RAG API",
     description="영어 학습 특화 RAG 시스템 API",
-    version="1.2.0",
+    version="1.3.0",
 )
 
 # CORS 미들웨어 설정 (Streamlit 통신)
@@ -29,6 +29,7 @@ app.include_router(audio.router, prefix="/api", tags=["audio"])
 app.include_router(index.router, prefix="/api", tags=["index"])
 app.include_router(cache.router, prefix="/api", tags=["cache"])
 app.include_router(agent.router, prefix="/api", tags=["agent"])
+app.include_router(adaptive.router, prefix="/api", tags=["adaptive"])
 
 
 @app.get("/")

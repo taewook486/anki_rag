@@ -175,6 +175,72 @@ class HybridRetriever:
 
         return results
 
+    def search_dense_only(
+        self,
+        query: str,
+        top_k: int = 5,
+        source_filter: Optional[str] = None,
+        deck_filter: Optional[str] = None,
+        exclude_sources: Optional[list[str]] = None,
+        deduplicate: bool = True,
+        min_score: Optional[float] = None,
+    ) -> list[SearchResult]:
+        """Dense 벡터만 사용하는 단순 검색 (Adaptive RAG — Simple 전략)
+
+        Sparse 검색과 RRF fusion을 생략하여 단일 단어 조회에 최적화.
+        """
+        cache = get_search_cache()
+        cache_key = make_cache_key(
+            query=query, top_k=top_k, source_filter=source_filter,
+            deck_filter=deck_filter, exclude_sources=exclude_sources,
+            deduplicate=deduplicate, min_score=min_score,
+            mode="dense_only",
+        )
+        cached = cache.get(cache_key)
+        if cached is not None:
+            return cached
+
+        query_result = self.embedder.embed_query(query)
+        query_dense: list[float] = query_result.dense_vector
+
+        query_filter = self._build_filter(source_filter, deck_filter, exclude_sources)
+
+        dense_response = self.client.query_points(
+            collection_name=self.collection_name,
+            query=query_dense,
+            using="dense",
+            limit=top_k * 2,
+            query_filter=query_filter,
+            with_payload=True,
+        )
+
+        results = [
+            SearchResult(
+                document=Document(**hit.payload),
+                score=hit.score,
+                rank=rank,
+            )
+            for rank, hit in enumerate(dense_response.points, 1)
+        ]
+
+        # 정확 매칭 부스팅
+        results = self._boost_exact_match(results, query)
+
+        if deduplicate:
+            results = self._deduplicate_by_word(results)
+
+        threshold = min_score if min_score is not None else self.DEFAULT_MIN_SCORE
+        results = [r for r in results if r.score >= threshold]
+
+        results.sort(key=lambda r: r.score, reverse=True)
+        results = results[:top_k]
+
+        for i, r in enumerate(results, 1):
+            r.rank = i
+
+        cache.set(cache_key, results)
+        return results
+
     def _build_filter(
         self,
         source_filter: Optional[str],
