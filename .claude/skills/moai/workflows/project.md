@@ -65,70 +65,64 @@ Routing:
 
 ---
 
-## Phase 0.5: New Project Requirements Collection (New Projects Only)
+## Phase 0.3: Deep Interview (New Projects Only)
 
-Goal: Understand user requirements through smart questions to generate accurate project documentation.
+Purpose: Replace the static four-question sequence with a structured deep interview that adapts to user responses. This produces richer project context for documentation generation.
 
 [HARD] All questions MUST use AskUserQuestion in user's conversation_language.
+[HARD] During the interview, the agent MUST NOT write implementation code or generate documentation. The sole output is `.moai/project/interview.md`.
 
-Question 1 - Project Purpose (AskUserQuestion):
+**Interview Rounds (3 rounds maximum, configured in `.moai/config/sections/interview.yaml`):**
 
-Header: "Project Type"
+**Round 1: Vision**
 
-- Web Application (Recommended): Build a frontend, backend, or full-stack web application. Includes HTML/CSS/JS frontend with a server-side backend. Best for websites, dashboards, and web-based tools.
-- API Service: Build a REST API, GraphQL endpoint, or microservices backend. Best for mobile app backends, third-party integrations, and data services.
-- CLI Tool: Build a command-line utility or automation script. Best for developer tools, system utilities, and build automation.
-- Library/Package: Build a reusable code library, SDK, or framework. Best for shared utilities, open-source packages, and internal toolkits.
+Topic: What does this project do and who is it for?
 
-Question 2 - Primary Language (AskUserQuestion):
+Present via AskUserQuestion with exactly 4 options tailored to common project patterns. Example:
+- Option 1 (Recommended): Web application for end users: A frontend + backend system serving a web-based user interface. Best for dashboards, tools, and customer-facing products.
+- Option 2: API service or backend: A REST/GraphQL API or microservice consumed by other clients. Best for mobile backends, integrations, and data platforms.
+- Option 3: CLI tool or automation script: A command-line utility run by developers or operators. Best for build tools, deployment scripts, and developer utilities.
+- Option 4: Type your own answer: Enter a custom response if none of the above match your vision.
 
-Header: "Language"
+**Round 2: Technology**
 
-- TypeScript/JavaScript (Recommended): Most versatile choice for web development. Works for frontend (React, Vue), backend (Node.js, Bun), and full-stack applications. Largest ecosystem of packages and tools.
-- Python: Excellent for backend APIs (FastAPI, Django), data science, AI/ML, and automation scripts. Easy to learn with extensive library support.
-- Go: Best for high-performance microservices, CLI tools, and cloud-native applications. Fast compilation, strong concurrency support, and simple deployment.
-- Other: Choose this for Rust, Java, Kotlin, Ruby, Swift, C#, or other languages. You will be asked to specify.
+Topic: What is the primary technology stack?
 
-Question 3 - Project Description (AskUserQuestion with free text via "Other"):
+Present via AskUserQuestion with exactly 4 options based on Round 1 answer context:
+- Option 1 (Recommended): TypeScript/JavaScript: Full-stack or frontend-heavy projects. Largest ecosystem. Works for React frontends, Node.js backends, Bun runtimes.
+- Option 2: Python: Backend APIs, AI/ML workloads, scripting. FastAPI, Django, or simple scripts.
+- Option 3: Go: High-performance microservices, CLI tools, cloud-native binaries. Simple deployment.
+- Option 4: Type your own answer: Enter a custom response to specify Rust, Java, Kotlin, Ruby, Swift, C#, or another stack.
 
-Header: "Description"
+**Round 3: Scope**
 
-Present a question asking the user to describe their project. The user provides free text including:
-- Project name
-- Main features or goals
-- Target users or audience
+Topic: What are the key features and explicit boundaries?
 
-Question 4 - Key Features (AskUserQuestion, multiSelect: true):
+Present via AskUserQuestion with exactly 4 options based on the vision and technology selected. Example for a web app:
+- Option 1 (Recommended): Authentication + CRUD data layer + REST API: Core features for most web apps. User login, database persistence, and API endpoints.
+- Option 2: Read-only frontend + external API integration: Consumes existing data sources. No database needed.
+- Option 3: Real-time collaboration features: WebSocket or SSE for live updates, shared state.
+- Option 4: Type your own answer: Describe the exact features and what is explicitly out of scope.
 
-Header: "Features"
+**Output:** Write all answers to `.moai/project/interview.md` with this structure:
 
-Based on the selected project type and language, present relevant feature options:
+```
+# Project Interview
 
-For Web Applications:
-- Authentication: User login, registration, session management
-- Database: Data persistence with ORM and migrations
-- API Integration: External API calls and webhooks
-- Real-time: WebSocket or SSE for live updates
+## Round 1: Vision
+Question: {question asked}
+Answer: {user's answer}
 
-For API Services:
-- REST Endpoints: CRUD operations with validation
-- Authentication: JWT, OAuth, API keys
-- Database: SQL or NoSQL data layer
-- Documentation: OpenAPI/Swagger auto-generation
+## Round 2: Technology
+Question: {question asked}
+Answer: {user's answer}
 
-For CLI Tools:
-- Interactive prompts: User input collection with TUI
-- Configuration: Config file management (YAML, JSON, TOML)
-- Output formatting: Tables, colors, progress bars
-- Plugin system: Extensible architecture
+## Round 3: Scope
+Question: {question asked}
+Answer: {user's answer}
+```
 
-For Library/Package:
-- Type safety: Full type annotations
-- Documentation: Auto-generated API docs
-- Testing: Unit and integration test suite
-- CI/CD: Automated publishing pipeline
-
-After collection, use the gathered information to generate documentation and proceed to Phase 3 (skip Phase 1 and 2 since there is no existing code to analyze).
+After the interview, use the gathered information to generate documentation and proceed to Phase 3 (skip Phase 1 and Phase 2 since there is no existing code to analyze). Pass `interview.md` to Phase 3 as the primary input for documentation generation.
 
 ---
 
@@ -158,6 +152,67 @@ Execution Modes:
 
 - Fresh Documentation: When .moai/project/ is empty, generate all three files
 - Update Documentation: When docs exist, read existing, analyze for changes, ask user which files to regenerate
+
+---
+
+## Phase 1.5: Deep Interview (Existing Projects Only)
+
+Purpose: After codebase analysis, gather user intent and context that cannot be inferred from the code alone. Questions are informed by the analysis results from Phase 1.
+
+[HARD] All questions MUST use AskUserQuestion in user's conversation_language.
+[HARD] During the interview, the agent MUST NOT generate documentation or write files. The sole output is `.moai/project/interview.md`.
+
+**Interview Rounds (3 rounds maximum, configured in `.moai/config/sections/interview.yaml`):**
+
+**Round 1: Ownership and Purpose**
+
+Topic: Who maintains this project and what is the primary goal going forward?
+
+Present via AskUserQuestion with exactly 4 options based on Phase 1 detected project type:
+- Option 1 (Recommended): Active product being developed further: This codebase is actively developed and the documentation should reflect its current trajectory and roadmap.
+- Option 2: Legacy system being maintained: The codebase is stable and the documentation should reflect its current state for maintenance and onboarding.
+- Option 3: System being refactored or migrated: Major structural changes are planned and documentation should reflect the target state.
+- Option 4: Type your own answer: Enter a custom response to describe the ownership context.
+
+**Round 2: Constraints and Non-Goals**
+
+Topic: What are the known constraints, technical debts, or things this project intentionally does NOT do?
+
+Present via AskUserQuestion with exactly 4 options informed by Phase 1 analysis findings:
+- Option 1 (Recommended): No known critical constraints: Document the codebase as-is without constraint annotations.
+- Option 2: Performance or scalability constraints exist: There are known bottlenecks or scaling limits that should be documented.
+- Option 3: Security or compliance constraints exist: Specific security requirements or compliance rules affect the architecture.
+- Option 4: Type your own answer: Describe the specific constraints or non-goals for this project.
+
+**Round 3: Documentation Priority**
+
+Topic: What is the most important aspect to capture accurately in the documentation?
+
+Present via AskUserQuestion with exactly 4 options:
+- Option 1 (Recommended): Architecture and module boundaries: Prioritize documenting how the system is structured and how modules interact.
+- Option 2: Technology stack and dependencies: Prioritize the frameworks, libraries, and their versions for onboarding.
+- Option 3: Core business logic and data flow: Prioritize documenting what the system does and how data moves through it.
+- Option 4: Type your own answer: Specify what should be documented with highest fidelity.
+
+**Output:** Write all answers to `.moai/project/interview.md` with this structure:
+
+```
+# Project Interview
+
+## Round 1: Ownership and Purpose
+Question: {question asked}
+Answer: {user's answer}
+
+## Round 2: Constraints and Non-Goals
+Question: {question asked}
+Answer: {user's answer}
+
+## Round 3: Documentation Priority
+Question: {question asked}
+Answer: {user's answer}
+```
+
+Pass `interview.md` to Phase 2 (User Confirmation) and Phase 3 (Documentation Generation) as additional context. Documentation agents MUST read interview.md before generating files.
 
 ---
 
@@ -203,6 +258,59 @@ Output Files:
 
 ---
 
+## Phase 3.1: Independent Document Audit (Conditional)
+
+Purpose: Prevent confirmation bias by running an adversarial audit of the generated project documents before proceeding to codemaps and completion. The auditor sees only the final documents — not the analysis reasoning — and is prompted to find defects, not rationalize acceptance.
+
+Activation: Controlled by harness.yaml `plan_audit.enabled` setting.
+
+- `minimal`: Skip this phase
+- `standard`: Run plan-auditor once (default)
+- `thorough`: Run plan-auditor + cross-validate with evaluator-active
+
+Skip Conditions:
+- harness.yaml `plan_audit.enabled: false`
+- Phase 3 produced no output files (documentation generation failed)
+
+#### Step 3.1.1: Invoke plan-auditor
+
+Agent: plan-auditor subagent
+
+Delegation pattern: "Use the plan-auditor subagent to audit project documents at .moai/project/ — document type: project, iteration 1."
+
+Do NOT pass the analysis reasoning or interview context to plan-auditor. The agent enforces context isolation (M1) and will ignore injected reasoning. Pass only the document directory path.
+
+#### Step 3.1.2: Read Verdict
+
+After plan-auditor completes, read the report at `.moai/reports/plan-audit/PROJECT-review-1.md`.
+
+Extract the verdict line: `Verdict: PASS | FAIL`
+
+If PASS: Proceed to Phase 3.3 (Codemaps Generation).
+
+If FAIL: Enter retry loop.
+
+#### Step 3.1.3: Retry Loop (max 3 iterations)
+
+On FAIL:
+
+1. Delegate back to manager-docs: "Use the manager-docs subagent to revise .moai/project/ documents based on the review report at .moai/reports/plan-audit/PROJECT-review-{N}.md. Address all defects listed in the report."
+
+2. After manager-docs revision, re-invoke plan-auditor: "Use the plan-auditor subagent to audit project documents at .moai/project/ — document type: project, iteration {N+1}. Previous review report: .moai/reports/plan-audit/PROJECT-review-{N}.md"
+
+3. Read new verdict from `.moai/reports/plan-audit/PROJECT-review-{N+1}.md`.
+
+4. If PASS: Proceed to Phase 3.3.
+
+5. If FAIL and iteration < 3: Repeat from step 1 with incremented iteration.
+
+6. If FAIL and iteration = 3: Escalate to user via AskUserQuestion with the final review report. Options:
+   - Fix manually and retry: User edits documents, then re-run audit
+   - Accept as-is: Proceed despite audit failure (user override)
+   - Cancel: Stop project documentation generation
+
+---
+
 ## Phase 3.3: Codemaps Generation
 
 Purpose: Generate architecture documentation in `.moai/project/codemaps/` directory based on codebase analysis results from Phase 1.
@@ -232,24 +340,30 @@ For detailed codemaps generation process, delegate to codemaps workflow (workflo
 
 Goal: Verify LSP servers are installed for the detected technology stack.
 
-Language-to-LSP Mapping (16 languages):
+Language-to-LSP Mapping (all 16 MoAI-supported languages, alphabetical):
 
-- Python: pyright or pylsp (check: which pyright)
-- TypeScript/JavaScript: typescript-language-server (check: which typescript-language-server)
+- C++: clangd (check: which clangd)
+- C#: omnisharp or roslyn-ls (check: which omnisharp)
+- Elixir: elixir-ls or lexical (check: which elixir-ls)
+- Flutter: dart language-server (bundled with Dart SDK, check: which dart)
 - Go: gopls (check: which gopls)
-- Rust: rust-analyzer (check: which rust-analyzer)
 - Java: jdtls (Eclipse JDT Language Server)
-- Ruby: solargraph (check: which solargraph)
-- PHP: intelephense (check via npm)
-- C/C++: clangd (check: which clangd)
+- JavaScript: typescript-language-server (check: which typescript-language-server)
 - Kotlin: kotlin-language-server
+- PHP: phpactor or intelephense (check: which phpactor)
+- Python: pylsp or pyright-langserver (check: which pylsp)
+- R: R with languageserver package (check: which R)
+- Ruby: ruby-lsp or solargraph (check: which ruby-lsp)
+- Rust: rust-analyzer (check: which rust-analyzer)
 - Scala: metals
 - Swift: sourcekit-lsp
-- Elixir: elixir-ls
-- Dart/Flutter: dart language-server (bundled with Dart SDK)
-- C#: OmniSharp or csharp-ls
-- R: languageserver (R package)
-- Lua: lua-language-server
+- TypeScript: typescript-language-server (check: which typescript-language-server)
+
+Note: The canonical language name for Dart/Flutter ecosystem is "Flutter",
+matching `.claude/skills/moai/workflows/sync.md` Phase 0.6.1. Per
+CLAUDE.local.md Section 22, all 16 languages are treated as equal
+first-class citizens; the user's project marker files determine which
+server(s) actually spawn at runtime.
 
 If LSP server is NOT installed, present AskUserQuestion:
 
@@ -348,6 +462,7 @@ Next Steps (AskUserQuestion):
 - Phase 0-2: MoAI orchestrator (AskUserQuestion for all user interaction)
 - Phase 1: Explore subagent (codebase analysis)
 - Phase 3: manager-docs subagent (documentation generation)
+- Phase 3.1: plan-auditor subagent (independent document audit, conditional)
 - Phase 3.3: Explore + manager-docs subagents (codemaps generation via codemaps workflow)
 - Phase 3.5: expert-devops subagent (optional LSP installation)
 - Phase 3.7: MoAI orchestrator (automatic development_mode configuration, no user interaction)

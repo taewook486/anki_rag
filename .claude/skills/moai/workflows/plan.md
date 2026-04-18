@@ -100,6 +100,92 @@ Tasks for the Explore subagent:
 - Go through related test files to understand expected behavior and edge cases
 - Report comprehensive results for Phase 1B context
 
+### Phase 0.3: Clarity Evaluation (Conditional)
+
+Purpose: Evaluate how clearly the user's request is specified before beginning deep research. A vague request produces a weaker SPEC; this phase detects vagueness early and gathers missing context through a structured interview.
+
+**Skip conditions (any one is sufficient):**
+- `--skip-interview` flag is present in $ARGUMENTS
+- Input matches `resume SPEC-XXX` pattern (resuming an existing draft)
+- Input contains 5 or more distinct technical keywords (e.g., framework names, file paths, function names, domain terms)
+- `interview.enabled: false` in `.moai/config/sections/interview.yaml`
+
+**Clarity Scoring (1-10):**
+
+Evaluate the user's input against five dimensions:
+
+1. Technical keyword count: 2+ points for 3-4 keywords; 1 point for 1-2; 0 for none
+2. Action verbs specificity: "add CRUD endpoints for user profile" scores higher than "improve the app"
+3. File or module mentions: explicit file paths or module names each add 1 point
+4. Generic nouns penalty: deduct 1 point for each vague noun like "system", "feature", "thing"
+5. Scope boundary clarity: a defined boundary ("only the POST /users endpoint, no auth changes") adds 2 points
+
+**Score-to-rounds mapping:**
+
+| Clarity Score | Interview Rounds |
+|---|---|
+| 1-3 | 0 (request too vague — ask one broad clarification question instead) |
+| 4-6 | 2 rounds maximum |
+| 7-10 | 5 rounds maximum |
+
+Log the score: "Clarity score: {N}/10 — proceeding with {M} interview round(s)."
+
+If score is 1-3: Use a single AskUserQuestion asking for a clearer description, then re-evaluate. Do not enter the full interview loop.
+
+### Phase 0.3.1: Deep Interview Loop (Conditional)
+
+Purpose: Gather missing context through a structured, topic-focused interview before research begins. Each round presents curated options so the user can answer quickly.
+
+**Entry condition:** Clarity score 4-10 AND skip conditions not met (from Phase 0.3).
+
+**Guard:** [HARD] During the interview loop, the agent MUST NOT write implementation code or start codebase exploration. The sole output is `.moai/specs/SPEC-{ID}/interview.md`.
+
+**Round topics:**
+
+| Round | Focus Topic | Example Questions |
+|---|---|---|
+| 1 | Scope | What is included and explicitly excluded? |
+| 2 | Constraints | Performance, security, compatibility, technology limits |
+| 3 | Success criteria | How do we know when this is done and working correctly? |
+| 4 | Edge cases | What unusual or failure scenarios must be handled? |
+| 5 | Priority | What is the minimum viable slice if scope must be cut? |
+
+**Per-round execution:**
+
+For each round:
+
+1. Formulate 3 recommended options relevant to the current topic and the user's request context.
+2. Present via AskUserQuestion with exactly 4 options:
+   - Option 1: [Recommended based on context] (Recommended): [Detailed description of this answer]
+   - Option 2: [Alternative]: [Description]
+   - Option 3: [Alternative]: [Description]
+   - Option 4: Type your own answer: Enter a custom response if none of the above match
+3. Record the user's answer.
+4. Re-evaluate clarity score after each round.
+5. If updated clarity score drops to 3 or below: end the loop early (user's answers added no useful information).
+6. If updated clarity score reaches 8 or above: end the loop early (sufficient clarity achieved).
+7. Display round counter: "Interview round {N}/{max_rounds}"
+
+**Output:** Write all interview answers to `.moai/specs/SPEC-{ID}/interview.md` with this structure:
+
+```
+# Interview: {SPEC Title}
+
+## Round 1: Scope
+Question: {question asked}
+Answer: {user's answer}
+
+## Round 2: Constraints
+...
+
+## Clarity Score
+Initial: {N}/10
+Final: {N}/10
+Rounds completed: {N}
+```
+
+**Context passing:** Pass `interview.md` to Phase 0.5 (Deep Research) and Phase 1B (SPEC Planning) as additional context. Both agents MUST read interview.md before proceeding.
+
 ### Phase 0.4: UltraThink Auto-Activation (Conditional)
 
 Purpose: Automatically activate deep analysis mode for complex SPECs that benefit from structured reasoning.
@@ -218,6 +304,18 @@ Implementation guard: [HARD] During Phases 0.5, 1A, and 1B, all agent prompts MU
 
 ### Decision Point 1: Plan Review and Annotation Cycle
 
+<!-- moai:evolvable-start id="gate-plan-1" -->
+### HUMAN GATE: Plan Review
+
+**Previous phase output:** SPEC draft with EARS-format requirements and acceptance criteria
+**Approval question:** Does this SPEC capture the correct requirements and scope?
+**Cannot proceed until:**
+- [ ] User has reviewed the SPEC document
+- [ ] User has confirmed acceptance criteria are testable
+- [ ] User has approved the proposed file changes
+- [ ] No open questions remain in the SPEC
+<!-- moai:evolvable-end -->
+
 Tool: AskUserQuestion (at orchestrator level only)
 
 Options:
@@ -326,6 +424,73 @@ Quality constraints:
 - Acceptance criteria minimum 2 Given/When/Then scenarios
 - Technical terms and function names remain in English
 - Exclusions section MUST contain at least 1 entry
+
+### Phase 2.3: Independent SPEC Review (Conditional)
+
+Purpose: Prevent confirmation bias by running an adversarial audit of the just-created SPEC before user approval and GitHub Issue creation. The reviewer sees only the final spec.md — not the author's reasoning — and is prompted to find defects, not rationalize acceptance.
+
+Execution conditions:
+- `harness.yaml` `levels.{current_level}.plan_audit.enabled` is `true`
+- Current harness level is `standard` or `thorough` (default: enabled)
+- SPEC files were successfully created in Phase 2
+
+Skip conditions:
+- Harness level is `minimal` (fast iteration path, plan_audit.enabled: false)
+- `--no-review` flag is present in $ARGUMENTS
+- spec.md was not created (Phase 2 failed)
+
+#### Step 2.3.1: Invoke plan-auditor
+
+Agent: plan-auditor subagent
+
+Delegation pattern: "Use the plan-auditor subagent to audit the SPEC at .moai/specs/{SPEC-ID}/ — this is iteration 1."
+
+Do NOT pass the author's reasoning or conversation history to plan-auditor. The agent enforces context isolation (M1) and will ignore injected reasoning. Pass only the SPEC directory path.
+
+#### Step 2.3.2: Read Verdict
+
+After plan-auditor completes, read the report at `.moai/reports/plan-audit/{SPEC-ID}-review-1.md`.
+
+Extract the verdict line: `Verdict: PASS | FAIL`
+
+#### Step 2.3.3: PASS Path
+
+If verdict is PASS: proceed directly to Phase 2.5 (GitHub Issue Creation).
+
+Log: "SPEC review passed (iteration 1). Proceeding to Phase 2.5."
+
+#### Step 2.3.4: FAIL Path — Retry Loop (max 3 iterations)
+
+If verdict is FAIL:
+
+1. Delegate back to manager-spec: "Use the manager-spec subagent to revise .moai/specs/{SPEC-ID}/spec.md based on the review report at .moai/reports/plan-audit/{SPEC-ID}-review-{N}.md. Address all defects listed in the report. DO NOT implement any code."
+
+2. After manager-spec revision, re-invoke plan-auditor: "Use the plan-auditor subagent to audit .moai/specs/{SPEC-ID}/ — this is iteration {N+1}. Previous review report: .moai/reports/plan-audit/{SPEC-ID}-review-{N}.md"
+
+3. Read new verdict from `.moai/reports/plan-audit/{SPEC-ID}-review-{N+1}.md`.
+
+4. Repeat until PASS or 3 iterations exhausted.
+
+Iteration tracking: Display "SPEC review iteration {N}/3" after each verdict.
+
+#### Step 2.3.5: Escalation after 3 FAIL Iterations
+
+If all three iterations result in FAIL, do NOT proceed to Phase 2.5 automatically.
+
+Present the full defect history to the user:
+- Show `.moai/reports/plan-audit/{SPEC-ID}-review-1.md` through `-review-3.md`
+- Summarize blocking defects that persisted across all iterations
+- Use AskUserQuestion with options:
+  - Force-accept SPEC with known defects (proceed to Phase 2.5): "Accept SPEC with known defects — I will fix them manually before /moai run"
+  - Request manual SPEC revision: "I will manually edit the SPEC — re-run review after my edits"
+  - Abort plan workflow: "Abort — start over with a clearer feature description"
+
+Harness configuration reference (harness.yaml):
+- `minimal`: plan_audit.enabled: false (skip this entire phase)
+- `standard`: plan_audit.enabled: true, max_iterations: 3, require_must_pass: true
+- `thorough`: plan_audit.enabled: true, max_iterations: 3, require_must_pass: true, cross_validate_with_evaluator_active: true
+
+For `thorough` harness with `cross_validate_with_evaluator_active: true`: after plan-auditor PASS, additionally invoke evaluator-active in SPEC-review mode to cross-validate must-pass criteria. If evaluator-active disagrees with plan-auditor's PASS, treat as FAIL and trigger one additional iteration.
 
 ### Phase 2.5: GitHub Issue Creation (Conditional)
 
@@ -437,6 +602,17 @@ Tasks:
 - Output: `mx_plan` section in SPEC document with annotation targets and priorities
 
 ### Phase 3.6: SPEC Quality Gate
+
+<!-- moai:evolvable-start id="gate-plan-2" -->
+### HUMAN GATE: SPEC Quality Validation
+
+**Previous phase output:** Validated SPEC with quality score
+**Approval question:** Is the SPEC ready for execution mode selection and implementation?
+**Cannot proceed until:**
+- [ ] SPEC quality gate shows PASS
+- [ ] No HARD rule violations detected
+- [ ] User has selected execution mode (sub-agent vs team)
+<!-- moai:evolvable-end -->
 
 Purpose: Verify SPEC document quality before proceeding to implementation. Catches incomplete or inconsistent specs early.
 

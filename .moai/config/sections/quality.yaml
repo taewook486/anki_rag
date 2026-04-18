@@ -1,4 +1,9 @@
 constitution:
+    ast_grep_gate:
+        block_on_error: true
+        enabled: true
+        rules_dir: .moai/config/astgrep-rules
+        warn_only_mode: false
     coverage_exemptions:
         enabled: false
         max_exempt_percentage: 5
@@ -13,9 +18,9 @@ constitution:
     enforce_quality: true
     lsp_integration:
         diagnostic_sources:
-            - typecheck     # mypy / pyright
-            - lint          # ruff
-            - security      # bandit (선택)
+            - typecheck
+            - lint
+            - security
         regression_detection:
             error_increase_threshold: 0
             type_error_increase_threshold: 0
@@ -64,6 +69,7 @@ constitution:
     principles:
         simplicity:
             max_parallel_tasks: 10
+    session_effort_default: xhigh
     tdd_settings:
         min_coverage_per_commit: 80
         mutation_testing_enabled: false

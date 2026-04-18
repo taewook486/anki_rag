@@ -124,6 +124,18 @@ Pre-execution commands: git status, git diff, git branch, git log, find .moai/sp
 
 ### Phase 0: Pre-Sync Quality Gate
 
+<!-- moai:evolvable-start id="gate-sync-1" -->
+### HUMAN GATE: Pre-Sync Quality
+
+**Previous phase output:** Completed SPEC implementation
+**Approval question:** Is the project in a state where documentation can be synced?
+**Cannot proceed until:**
+- [ ] Working tree is clean or only expected changes present
+- [ ] All tests pass
+- [ ] MX tags validated
+- [ ] No HARD rule violations
+<!-- moai:evolvable-end -->
+
 Purpose: Run the gate workflow (workflows/gate.md) as a fast pre-check before the full deployment readiness verification. Catches lint/format/type errors early and auto-fixes them.
 
 #### Step 0.0.1: Gate Execution
@@ -136,6 +148,23 @@ Purpose: Run the gate workflow (workflows/gate.md) as a fast pre-check before th
   - Abort: Exit sync workflow
 
 Output: gate_report with pass/fail per check category.
+
+### Phase 0.05: Code Simplification Review
+
+Purpose: Run the simplify skill on changed code to catch reuse opportunities, unnecessary complexity, and efficiency issues before the full quality verification pipeline. This mirrors the Run phase's post-REFACTOR simplify step, ensuring sync-only changes also receive simplification review.
+
+#### Step 0.05.1: Execute Simplify
+
+- Invoke Skill("simplify") on all changed files (git diff --name-only against base branch)
+- The simplify skill reviews for: code reuse opportunities, quality issues, and efficiency improvements
+- If issues found: auto-fix and re-run tests to verify no regressions
+- If no issues found: proceed to Phase 0.1
+
+#### Step 0.05.2: Re-verify After Simplification
+
+- If simplify made changes: run the gate checks again (test + lint + vet) to confirm no regressions
+- If tests fail after simplification: revert simplify changes and proceed without them
+- Log simplify results in sync report (files reviewed, issues found, fixes applied)
 
 ### Phase 0.1: Deployment Readiness Check
 
@@ -522,6 +551,17 @@ For each SPEC associated with the current sync:
   - Level 3 (spec-as-source): Flag discrepancies as warnings (implementation should match SPEC exactly)
 
 #### Step 1.6: User Approval
+
+<!-- moai:evolvable-start id="gate-sync-2" -->
+### HUMAN GATE: Documentation Scope
+
+**Previous phase output:** Divergence analysis showing doc/code drift
+**Approval question:** Which documents should be regenerated?
+**Cannot proceed until:**
+- [ ] User has reviewed divergence report
+- [ ] User has approved document regeneration scope
+- [ ] User has confirmed PR description draft
+<!-- moai:evolvable-end -->
 
 Tool: AskUserQuestion
 
@@ -1074,6 +1114,7 @@ When user aborts at any decision point:
 All of the following must be verified:
 
 - Phase 0: Deployment readiness verified (tests, migrations, env changes, backward compatibility)
+- Phase 0.05: Code simplification review completed (Skill("simplify") on changed files)
 - Phase 0.5: Quality verification completed (tests, linter, type checker, deep code review with auto-fix)
 - Phase 0.55: Security scan completed (if security-sensitive files changed)
 - Phase 0.7: Coverage analysis completed (measurement, gap analysis, test generation, verification)
@@ -1116,6 +1157,6 @@ All of the following must be verified:
 
 ---
 
-Version: 3.6.0
+Version: 3.7.0
 Updated: 2026-03-30
 Changes: Added test scenarios.

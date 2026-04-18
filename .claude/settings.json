@@ -128,7 +128,8 @@
       "Bash(d:/project/anki_rag/.venv/Scripts/python.exe tests/eval_multilingual.py)",
       "Bash(d:/project/anki_rag/.venv/Scripts/python.exe -c \":*)",
       "Read(//c/Users/taewo/OneDrive/문서/건국대학교-정보통신대학원/**)",
-      "Bash(/c/Users/taewo/.local/bin/uv pip install --python d:/project/anki_rag/.venv/Scripts/python.exe pymupdf)"
+      "Bash(/c/Users/taewo/.local/bin/uv pip install --python d:/project/anki_rag/.venv/Scripts/python.exe pymupdf)",
+      "Bash(/c/Windows/py.exe -3 d:/project/anki_rag/doc/md_to_hwp.py)"
     ],
     "deny": [
       "Read(./secrets/**)",

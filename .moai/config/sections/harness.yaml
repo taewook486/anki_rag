@@ -1,0 +1,109 @@
+harness:
+    auto_detection:
+        enabled: true
+        rules:
+            minimal:
+                conditions:
+                    - file_count <= 2 AND single_domain
+                    - spec_type in [bugfix, docs, config]
+                    - files_match [models.py, __init__.py, .env, *.yaml, *.md]
+            standard:
+                conditions:
+                    - file_count > 2 OR multi_domain
+                    - spec_type in [feature, refactor]
+                    - files_match [api/**, web/**, parser.py, cache.py, audio.py]
+            thorough:
+                conditions:
+                    - files_match [rag.py, retriever.py, embedder.py, indexer.py]
+                    - spec_priority == critical
+                    - keywords_present [embedding, vector, qdrant, retrieval, rrf, reranking, llm, prompt]
+                    - domain in [rag_pipeline, search, embedding, llm_integration]
+    default_profile: default
+    effort_mapping:
+        minimal: medium
+        standard: high
+        thorough: xhigh
+    escalation:
+        enabled: true
+        max_escalations: 2
+        triggers:
+            - quality_gate_fail
+            - review_critical
+            - test_coverage_low
+    levels:
+        minimal:
+            description: 단순 변경을 위한 빠른 반복 (설정, 문서, 모델 스키마)
+            evaluator: false
+            plan_audit:
+                enabled: false
+            skip_phases:
+                - 0
+                - 0.5
+                - 2
+                - 2.5
+                - 2.75
+                - 2.8a
+                - 2.9
+                - 2.1
+            sprint_contract: false
+        standard:
+            description: 일반 개발 품질 (API, 웹 UI, 파서, 캐시)
+            evaluator: true
+            evaluator_mode: final-pass
+            plan_audit:
+                enabled: true
+                max_iterations: 3
+                require_must_pass: true
+            skip_phases: []
+            sprint_contract: false
+        thorough:
+            description: 최고 품질 (RAG 파이프라인, 임베딩, 검색, LLM 통합)
+            evaluator: true
+            evaluator_mode: per-sprint
+            evaluator_profile: python-rag
+            plan_audit:
+                cross_validate_with_evaluator_active: true
+                enabled: true
+                max_iterations: 3
+                require_must_pass: true
+            playwright_testing: true
+            skip_phases: []
+            sprint_contract: true
+    mode_defaults:
+        cg: thorough
+        solo: auto
+        team: auto
+    model_upgrade_review:
+        checklist:
+            - action: If model handles longer coherent work, switch evaluator_mode from per-sprint to final-pass
+              affects: levels.thorough.evaluator_mode
+              id: sprint_necessity
+              question: Are per-sprint evaluations still needed, or can the model handle end-to-run evaluation?
+            - action: If no context anxiety, reduce auto_clear frequency or increase token_threshold
+              affects: workflow.yaml auto_clear.token_threshold
+              id: context_reset_necessity
+              question: Does the model still exhibit context anxiety near window limits?
+            - action: If self-evaluation is reliable, consider reducing gan_loop.max_iterations
+              affects: config.yaml gan_loop.max_iterations
+              id: evaluator_skepticism
+              question: Has model self-evaluation improved enough to reduce evaluator iterations?
+            - action: If coordination improved, consider increasing parallel agent limits
+              affects: workflow.yaml team settings
+              id: parallel_safety
+              question: Can the model safely coordinate more parallel agents without conflicts?
+            - action: Review each skipped phase — remove skip if model can handle the phase efficiently
+              affects: levels.minimal.skip_phases
+              id: guardrail_necessity
+              question: Are any minimal-level skip_phases still necessary for the upgraded model?
+            - action: If model handles complexity better, raise minimal threshold (more tasks qualify as minimal)
+              affects: auto_detection.rules
+              id: harness_level_thresholds
+              question: Should auto_detection thresholds be adjusted for improved model capabilities?
+        enabled: true
+        output:
+            report_path: .moai/reports/harness-review.md
+            require_approval: true
+        trigger:
+            manual_command: moai review --harness
+            on_model_change: true
+            review_interval_days: 90
