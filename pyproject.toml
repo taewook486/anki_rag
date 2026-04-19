@@ -17,6 +17,8 @@ dependencies = [
     "torch>=2.3",
     "python-dotenv>=1.0",
     "transformers>=4.44,<4.52",
+    "networkx>=3.2",
+    "nltk>=3.9.4",
 ]
 
 [project.optional-dependencies]
