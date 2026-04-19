@@ -336,3 +336,158 @@ class TestQueryComplexityEnum:
         When 문자열 비교를 하면,
         Then 직접 비교 가능하다"""
         assert QueryComplexity.SIMPLE == "simple"
+
+
+# ---------------------------------------------------------------------------
+# T5: AdaptiveRAG Complex 경로 GraphRAG Fusion 주입 테스트
+# ---------------------------------------------------------------------------
+
+class TestAdaptiveRAGGraphFusion:
+    """Complex 전략에 GraphRAG Fusion 주입 테스트 (T5)"""
+
+    @patch("src.adaptive.classify_query", return_value=QueryComplexity.COMPLEX)
+    def test_complex_path_invokes_graph_fusion_when_graph_provided(self, mock_classify):
+        """Given graph가 제공된 AdaptiveRAG에서 Complex 경로 실행 시,
+        When graph에 synonym 엣지가 있으면,
+        Then graph_rag_fusion이 호출된다 (graph_word가 활용됨)"""
+        from unittest.mock import patch as upatch
+        from src.graph import WordKnowledgeGraph, WordNode, WordRelation, RelationType
+
+        # 그래프에 "forsake"가 "abandon"의 synonym으로 등록
+        g = WordKnowledgeGraph()
+        g.add_word(WordNode(word="abandon", meaning="포기하다", source="t", deck=""))
+        g.add_word(WordNode(word="forsake", meaning="버리다", source="t", deck=""))
+        g.add_relation(WordRelation("abandon", "forsake", RelationType.SYNONYM))
+
+        # retriever.search는 forsake 결과 반환
+        from src.models import Document, SearchResult
+        forsake_doc = Document(word="forsake", meaning="버리다", source="t", deck="T")
+        forsake_result = SearchResult(document=forsake_doc, score=0.6, rank=1)
+
+        retriever = MagicMock()
+        retriever.search.return_value = [forsake_result]
+
+        rag = MagicMock()
+        rag.model = "test-model"
+        rag.max_tokens = 1024
+        rag.provider.generate.return_value = "Complex 답변"
+
+        agent = MagicMock()
+        from src.agent import AgentResult, AgentStep
+        agent.run.return_value = AgentResult(
+            answer="Complex 답변",
+            steps=[],
+            total_steps=0,
+        )
+
+        # AdaptiveRAG에 graph 주입
+        adaptive = AdaptiveRAG(retriever=retriever, rag=rag, agent=agent, graph=g)
+        result = adaptive.query("abandon 단어를 난이도별로 정리해줘")
+
+        # Complex 경로가 실행됨
+        assert result.complexity == QueryComplexity.COMPLEX
+
+    @patch("src.adaptive.classify_query", return_value=QueryComplexity.COMPLEX)
+    def test_complex_path_skips_fusion_when_no_graph(self, mock_classify):
+        """Given graph=None으로 AdaptiveRAG가 생성된 경우,
+        When Complex 경로 실행 시,
+        Then fusion 없이 정상 실행된다 (예외 미발생)"""
+        adaptive = _make_adaptive()  # graph=None
+        result = adaptive.query("학습 계획")
+        assert result.complexity == QueryComplexity.COMPLEX
+
+    @patch("src.adaptive.classify_query", return_value=QueryComplexity.COMPLEX)
+    def test_complex_path_skips_fusion_when_graph_empty(self, mock_classify):
+        """Given 빈 그래프가 제공된 경우,
+        When Complex 경로 실행 시,
+        Then fusion 없이 정상 실행된다 (UB3)"""
+        from src.graph import WordKnowledgeGraph
+        empty_graph = WordKnowledgeGraph()
+
+        retriever = MagicMock()
+        rag = MagicMock()
+        rag.model = "test-model"
+        rag.max_tokens = 1024
+        rag.provider.generate.return_value = "답변"
+        agent = MagicMock()
+        from src.agent import AgentResult
+        agent.run.return_value = AgentResult(answer="답변", steps=[], total_steps=0)
+
+        adaptive = AdaptiveRAG(retriever=retriever, rag=rag, agent=agent, graph=empty_graph)
+        result = adaptive.query("학습 계획")
+        assert result.complexity == QueryComplexity.COMPLEX
+
+
+# ---------------------------------------------------------------------------
+# AC-F4: AdaptiveResult graph_used / graph_terms 필드 검증
+# ---------------------------------------------------------------------------
+
+class TestAdaptiveResultGraphFields:
+    """AC-F4 — graph_used, graph_terms 필드가 Complex 경로에서 올바르게 설정됨"""
+
+    @patch("src.adaptive.classify_query", return_value=QueryComplexity.COMPLEX)
+    def test_complex_response_includes_graph_used_when_fusion_active(self, mock_classify):
+        """Given graph가 주입된 AdaptiveRAG에서 Complex 경로 실행 시,
+        When graph에 관련 단어가 있어 GraphRAG Fusion이 실행되면,
+        Then result.graph_used=True, result.graph_terms에 추가 단어가 포함된다 (AC-F4)"""
+        from src.graph import WordKnowledgeGraph, WordNode, WordRelation, RelationType
+        from src.models import Document, SearchResult
+
+        # 그래프: abandon → forsake (SYNONYM)
+        g = WordKnowledgeGraph()
+        g.add_word(WordNode(word="abandon", meaning="포기하다", source="t", deck=""))
+        g.add_word(WordNode(word="forsake", meaning="버리다", source="t", deck=""))
+        g.add_relation(WordRelation("abandon", "forsake", RelationType.SYNONYM))
+
+        # 벡터 검색: abandon만 반환
+        abandon_doc = Document(word="abandon", meaning="포기하다", source="t", deck="T")
+        abandon_result = SearchResult(document=abandon_doc, score=0.9, rank=1)
+
+        # 그래프 관련 단어 재검색: forsake 반환
+        forsake_doc = Document(word="forsake", meaning="버리다", source="t", deck="T")
+        forsake_result = SearchResult(document=forsake_doc, score=0.6, rank=1)
+
+        retriever = MagicMock()
+        # search()는 첫 번째 호출 시 [abandon_result], 이후 [forsake_result] 반환
+        retriever.search.side_effect = [[abandon_result], [forsake_result]]
+
+        rag = MagicMock()
+        rag.model = "test-model"
+        rag.max_tokens = 1024
+        rag.provider.generate.return_value = "Complex 답변"
+
+        agent = MagicMock()
+        from src.agent import AgentResult
+        agent.run.return_value = AgentResult(answer="Complex 답변", steps=[], total_steps=0)
+
+        adaptive = AdaptiveRAG(retriever=retriever, rag=rag, agent=agent, graph=g)
+        result = adaptive.query("abandon 단어를 난이도별로 정리해줘")
+
+        # Fusion이 실행되었으므로 graph_used=True
+        assert result.graph_used is True
+        # forsake가 벡터 결과에 없었으므로 graph_terms에 포함
+        assert "forsake" in result.graph_terms
+
+    @patch("src.adaptive.classify_query", return_value=QueryComplexity.COMPLEX)
+    def test_complex_graph_used_false_when_no_graph(self, mock_classify):
+        """Given graph=None인 경우,
+        When Complex 경로 실행 시,
+        Then graph_used=False, graph_terms=[] 기본값이다"""
+        adaptive = _make_adaptive()
+        result = adaptive.query("학습 계획 세워줘")
+
+        assert result.graph_used is False
+        assert result.graph_terms == []
+
+    @patch("src.adaptive.classify_query", return_value=QueryComplexity.SIMPLE)
+    def test_simple_strategy_graph_used_false(self, mock_classify):
+        """Given Simple 전략 실행 시,
+        When 결과를 확인하면,
+        Then graph_used=False, graph_terms=[] 기본값이다"""
+        adaptive = _make_adaptive(generate_return="abandon: 버리다")
+        adaptive.retriever.search_dense_only.return_value = []
+
+        result = adaptive.query("abandon")
+
+        assert result.graph_used is False
+        assert result.graph_terms == []

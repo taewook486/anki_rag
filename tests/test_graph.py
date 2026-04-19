@@ -329,3 +329,132 @@ class TestGraphRagFusion:
 
         scores = [r.score for r in merged]
         assert scores == sorted(scores, reverse=True)
+
+
+# ---------------------------------------------------------------------------
+# T1: ANTONYM — WordNet 기반 반의어 자동 추출
+# ---------------------------------------------------------------------------
+
+class TestAntonymExtraction:
+    """WordNet ANTONYM 자동 추출 테스트"""
+
+    def test_antonym_happy_unhappy(self, graph: WordKnowledgeGraph):
+        """Given 'happy' 단어로 그래프를 빌드할 때,
+        When build_from_documents를 호출하면,
+        Then get_antonyms('happy')에 'unhappy'가 포함된다"""
+        doc = _make_doc(word="happy", meaning="행복한")
+        build_from_documents(graph, [doc])
+        antonyms = graph.get_antonyms("happy")
+        assert "unhappy" in antonyms, f"예상: 'unhappy' in {antonyms}"
+
+    def test_antonym_graceful_skip_on_unknown_word(self, graph: WordKnowledgeGraph):
+        """Given WordNet에 없는 단어 'xyzzyx'일 때,
+        When build_from_documents를 호출하면,
+        Then 예외 없이 종료되고 빈 반의어 목록을 반환한다"""
+        doc = _make_doc(word="xyzzyx", meaning="없는 단어")
+        build_from_documents(graph, [doc])
+        antonyms = graph.get_antonyms("xyzzyx")
+        assert antonyms == []
+
+    def test_antonym_relation_type_is_antonym(self, graph: WordKnowledgeGraph):
+        """Given ANTONYM 관계가 그래프에 추가된 뒤,
+        When ANTONYM 관계 타입으로 필터링하면,
+        Then 결과가 반환된다"""
+        doc = _make_doc(word="good", meaning="좋은")
+        build_from_documents(graph, [doc])
+        antonyms = graph.get_related("good", relation_type=RelationType.ANTONYM)
+        # good의 반의어(evil/bad 등)가 있을 수 있음 — 결과 타입만 확인
+        assert isinstance(antonyms, list)
+
+
+# ---------------------------------------------------------------------------
+# T2: 영속화 save/load
+# ---------------------------------------------------------------------------
+
+class TestGraphPersistence:
+    """WordKnowledgeGraph 영속화 (save/load) 테스트"""
+
+    def test_save_load_roundtrip(self, graph: WordKnowledgeGraph, tmp_path):
+        """Given 3개 노드 + 2개 엣지가 있는 그래프일 때,
+        When save 후 새 인스턴스에서 load하면,
+        Then 노드/엣지 수가 동일하다"""
+        import importlib
+        import src.graph as graph_module
+        graph.add_word(WordNode(word="alpha", meaning="알파", source="test", deck=""))
+        graph.add_word(WordNode(word="beta", meaning="베타", source="test", deck=""))
+        graph.add_word(WordNode(word="gamma", meaning="감마", source="test", deck=""))
+        graph.add_relation(WordRelation("alpha", "beta", RelationType.SYNONYM))
+        graph.add_relation(WordRelation("beta", "gamma", RelationType.CO_OCCURS))
+
+        save_path = str(tmp_path / "graph_test")
+        graph.save(save_path)
+
+        # 새 인스턴스에서 로드
+        new_graph = WordKnowledgeGraph()
+        result = new_graph.load(save_path)
+
+        assert result is True
+        assert new_graph.node_count() == 3
+        assert new_graph.edge_count() == 2
+
+    def test_load_missing_file_returns_false(self):
+        """Given 존재하지 않는 경로일 때,
+        When load를 호출하면,
+        Then False를 반환하고 예외가 발생하지 않는다"""
+        g = WordKnowledgeGraph()
+        if not g.is_available:
+            pytest.skip("networkx 미설치")
+        result = g.load("nonexistent_path_xyz_abc")
+        assert result is False
+
+    def test_save_creates_pkl_and_graphml(self, graph: WordKnowledgeGraph, tmp_path):
+        """Given 그래프에 노드가 있을 때,
+        When save를 호출하면,
+        Then .pkl과 .graphml 파일이 모두 생성된다"""
+        graph.add_word(WordNode(word="test", meaning="테스트", source="test", deck=""))
+        save_path = str(tmp_path / "subdir" / "graph")
+        graph.save(save_path)
+
+        import os
+        assert os.path.exists(save_path + ".pkl")
+        assert os.path.exists(save_path + ".graphml")
+
+
+# ---------------------------------------------------------------------------
+# T3: CO_OCCURS 문서당 상한
+# ---------------------------------------------------------------------------
+
+class TestCoOccurrenceCap:
+    """CO_OCCURS 문서당 상한 테스트"""
+
+    def test_cooccurrence_respects_cap(self, graph: WordKnowledgeGraph):
+        """Given 예문에 20개 이상의 알려진 단어가 포함된 문서일 때,
+        When max_cooccurrence_per_doc=5로 build_from_documents를 호출하면,
+        Then 해당 문서에서 추가된 CO_OCCURS 엣지가 5개 이하다"""
+        # 20개 단어 생성
+        words = [f"word{i}" for i in range(20)]
+        docs = [_make_doc(word=w, meaning=f"의미{i}") for i, w in enumerate(words)]
+
+        # 첫 번째 문서의 예문에 나머지 19개 단어 포함
+        example_text = " ".join(words[1:]) + " is a test example sentence."
+        docs[0] = _make_doc(word=words[0], meaning="기준 단어", example=example_text)
+
+        build_from_documents(graph, docs, max_cooccurrence_per_doc=5)
+
+        # 첫 번째 단어(word0)의 CO_OCCURS 엣지가 5개 이하인지 확인
+        co = graph.get_related(words[0], relation_type=RelationType.CO_OCCURS)
+        assert len(co) <= 5, f"CO_OCCURS 엣지 수 {len(co)}가 상한 5를 초과"
+
+    def test_default_cap_is_ten(self, graph: WordKnowledgeGraph):
+        """Given 기본 max_cooccurrence_per_doc 값으로 호출할 때,
+        When 예문에 15개 이상 단어가 포함된 경우,
+        Then CO_OCCURS 엣지가 10개 이하다"""
+        words = [f"cap{i}" for i in range(15)]
+        docs = [_make_doc(word=w, meaning=f"의미{i}") for i, w in enumerate(words)]
+        example_text = " ".join(words[1:]) + " test."
+        docs[0] = _make_doc(word=words[0], meaning="기준", example=example_text)
+
+        build_from_documents(graph, docs)  # 기본값 10
+
+        co = graph.get_related(words[0], relation_type=RelationType.CO_OCCURS)
+        assert len(co) <= 10, f"CO_OCCURS 엣지 수 {len(co)}가 기본 상한 10을 초과"
