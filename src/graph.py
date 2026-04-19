@@ -9,14 +9,29 @@
 from __future__ import annotations
 
 import logging
+import pickle
 import re
 from dataclasses import dataclass
 from enum import Enum
+from pathlib import Path
 from typing import TYPE_CHECKING, Any, Optional
 
 if TYPE_CHECKING:
     from src.models import Document
     from src.retriever import HybridRetriever
+
+# WordNet 임포트 — 설치되지 않은 경우 graceful 처리
+# @MX:WARN: [AUTO] nltk/WordNet 없으면 ANTONYM 추출 건너뜀
+# @MX:REASON: [AUTO] 선택적 의존성 — 미설치 환경에서도 시스템이 동작해야 함
+try:
+    from nltk.corpus import wordnet as _wn
+    _WORDNET_AVAILABLE = True
+except ImportError:
+    _wn = None  # type: ignore[assignment]
+    _WORDNET_AVAILABLE = False
+    logging.getLogger(__name__).warning(
+        "nltk 미설치 — ANTONYM 추출 건너뜀. pip install nltk"
+    )
 
 logger = logging.getLogger(__name__)
 
@@ -77,7 +92,12 @@ class WordKnowledgeGraph:
     현재 구현: NetworkX 인메모리 (v2.0에서 Neo4j로 교체 예정)
     """
 
-    def __init__(self) -> None:
+    def __init__(self, persist_path: Optional[str] = None) -> None:
+        """그래프 초기화
+
+        Args:
+            persist_path: 영속화 파일 경로 (확장자 제외). 파일이 존재하면 자동 로드.
+        """
         try:
             import networkx as nx
             # MultiDiGraph: 같은 노드 쌍 간 복수 관계 타입 지원
@@ -89,6 +109,11 @@ class WordKnowledgeGraph:
             self._graph = None
             self._nx = None
             logger.warning("networkx 미설치 — WordKnowledgeGraph 비활성화. pip install networkx")
+            return
+
+        # persist_path가 지정되었고 파일이 존재하면 자동 로드
+        if persist_path is not None:
+            self.load(persist_path)
 
     @property
     def is_available(self) -> bool:
@@ -192,14 +217,132 @@ class WordKnowledgeGraph:
     def edge_count(self) -> int:
         return self._graph.number_of_edges() if self.is_available else 0
 
+    # @MX:ANCHOR: [AUTO] 그래프 영속화 저장 진입점
+    # @MX:REASON: [AUTO] indexer, CLI 등 복수 호출자에서 사용되는 공개 API
+    def save(self, path: str) -> None:
+        """그래프를 pickle + GraphML 이중으로 저장한다.
+
+        Args:
+            path: 저장 경로 (확장자 제외). {path}.pkl 과 {path}.graphml 생성.
+        """
+        if not self.is_available:
+            logger.warning("save: networkx 미설치 — 저장 건너뜀")
+            return
+
+        p = Path(path)
+        p.parent.mkdir(parents=True, exist_ok=True)
+
+        # pickle 저장 (빠른 로드용)
+        pkl_path = p.with_suffix(".pkl")
+        with open(pkl_path, "wb") as f:
+            pickle.dump(self._graph, f)
+
+        # GraphML 저장 (안전망 — 버전 호환용)
+        # GraphML은 None 값을 지원하지 않으므로 빈 문자열로 변환한 복사본 사용
+        graphml_path = p.with_suffix(".graphml")
+        graph_copy = self._graph.copy()
+        for node, data in graph_copy.nodes(data=True):
+            for key, val in list(data.items()):
+                if val is None:
+                    data[key] = ""
+        self._nx.write_graphml(graph_copy, str(graphml_path))
+
+        logger.info(
+            "그래프 저장 완료 — pkl: %s, graphml: %s (노드: %d, 엣지: %d)",
+            pkl_path, graphml_path, self.node_count(), self.edge_count(),
+        )
+
+    # @MX:ANCHOR: [AUTO] 그래프 영속화 로드 진입점
+    # @MX:REASON: [AUTO] __init__, indexer, CLI 등 복수 호출자에서 사용되는 공개 API
+    def load(self, path: str) -> bool:
+        """pickle 우선, 실패 시 GraphML로 그래프를 로드한다.
+
+        Args:
+            path: 로드 경로 (확장자 제외).
+
+        Returns:
+            True: 로드 성공, False: 파일 없음 또는 로드 실패
+        """
+        if not self.is_available:
+            return False
+
+        p = Path(path)
+        pkl_path = p.with_suffix(".pkl")
+        graphml_path = p.with_suffix(".graphml")
+
+        # 1차: pickle 시도
+        if pkl_path.exists():
+            try:
+                with open(pkl_path, "rb") as f:
+                    loaded = pickle.load(f)
+                self._graph = loaded
+                logger.info(
+                    "그래프 로드 완료 (pickle) — 노드: %d, 엣지: %d",
+                    self.node_count(), self.edge_count(),
+                )
+                return True
+            except Exception as e:
+                logger.error("pickle 로드 실패 (%s) — GraphML 시도", pkl_path, exc_info=e)
+
+        # 2차: GraphML 폴백
+        if graphml_path.exists():
+            try:
+                self._graph = self._nx.read_graphml(str(graphml_path))
+                logger.info(
+                    "그래프 로드 완료 (GraphML) — 노드: %d, 엣지: %d",
+                    self.node_count(), self.edge_count(),
+                )
+                return True
+            except Exception as e:
+                logger.error("GraphML 로드 실패 (%s)", graphml_path, exc_info=e)
+
+        # 파일 없음
+        if not pkl_path.exists() and not graphml_path.exists():
+            logger.debug("그래프 파일 없음 — 빈 그래프로 시작: %s", path)
+
+        return False
+
 
 # ───────────────────────────────────────────
 # 그래프 자동 구축 헬퍼 (설계서 13.2)
 # ───────────────────────────────────────────
 
+def _extract_antonyms(word: str) -> list[str]:
+    """WordNet을 사용하여 단어의 반의어 목록을 추출한다.
+
+    # @MX:WARN: [AUTO] WordNet 미설치 시 빈 리스트 반환 (graceful degradation)
+    # @MX:REASON: [AUTO] nltk는 선택적 의존성 — 없어도 시스템이 동작해야 함
+
+    Args:
+        word: 반의어를 찾을 단어
+
+    Returns:
+        반의어 목록 (중복 제거됨). WordNet에 없거나 오류 시 빈 리스트.
+    """
+    if not _WORDNET_AVAILABLE or _wn is None:
+        return []
+
+    try:
+        antonyms: set[str] = set()
+        for synset in _wn.synsets(word):
+            for lemma in synset.lemmas():
+                for antonym in lemma.antonyms():
+                    ant_name = antonym.name().replace("_", " ")
+                    if ant_name.lower() != word.lower():
+                        antonyms.add(ant_name)
+        return sorted(antonyms)
+    except Exception:
+        logger.debug("ANTONYM 추출 실패 — 단어: %s", word)
+        return []
+
+
 # @MX:ANCHOR: Document 리스트 → WordKnowledgeGraph 변환 진입점
 # @MX:REASON: [AUTO] AnkiParser 결과를 그래프로 변환하는 유일한 공개 진입점 (indexer, cli에서 호출)
-def build_from_documents(graph: WordKnowledgeGraph, documents: list[Document]) -> None:
+def build_from_documents(
+    graph: WordKnowledgeGraph,
+    documents: list[Document],
+    max_cooccurrence_per_doc: int = 10,
+) -> None:
     """Document 리스트로 지식 그래프를 자동 구축한다.
 
     설계서 13.2 — 그래프 데이터 흐름:
@@ -207,6 +350,7 @@ def build_from_documents(graph: WordKnowledgeGraph, documents: list[Document]) -
 
     처리하는 관계 타입:
         SYNONYM      — document.synonyms 필드
+        ANTONYM      — WordNet 기반 자동 추출 (nltk 설치 시)
         DERIVED_FROM — 접미사 패턴 매칭 (ment/tion/er/ing/ed 등)
         CO_OCCURS    — document.example 예문에서 공기 단어 추출
         SAME_CATEGORY — 같은 source 내 단어 묶음
@@ -214,6 +358,7 @@ def build_from_documents(graph: WordKnowledgeGraph, documents: list[Document]) -
     Args:
         graph: 대상 WordKnowledgeGraph 인스턴스
         documents: AnkiParser 파싱 결과 Document 리스트
+        max_cooccurrence_per_doc: 문서당 추가할 CO_OCCURS 엣지 최대 수 (기본 10)
     """
     if not graph.is_available:
         logger.warning("build_from_documents: networkx 미설치 — 그래프 구축 건너뜀")
@@ -248,6 +393,25 @@ def build_from_documents(graph: WordKnowledgeGraph, documents: list[Document]) -
                 relation_type=RelationType.SYNONYM,
             ))
 
+    # ── 2b. ANTONYM: WordNet 기반 자동 추출 ──
+    # WordNet 미설치 시 _extract_antonyms 가 빈 리스트를 반환하므로 graceful 처리
+    for doc in documents:
+        antonyms = _extract_antonyms(doc.word)
+        for ant in antonyms:
+            # 반의어 노드가 그래프에 없으면 추가
+            if ant not in graph._graph:
+                graph.add_word(WordNode(
+                    word=ant,
+                    meaning="",
+                    source=doc.source,
+                    deck=doc.deck or "",
+                ))
+            graph.add_relation(WordRelation(
+                source_word=doc.word,
+                target_word=ant,
+                relation_type=RelationType.ANTONYM,
+            ))
+
     # ── 3. DERIVED_FROM: 접미사 패턴으로 파생어 관계 추출 ──
     word_lower_map: dict[str, str] = {doc.word.lower(): doc.word for doc in documents}
     for doc in documents:
@@ -267,12 +431,15 @@ def build_from_documents(graph: WordKnowledgeGraph, documents: list[Document]) -
                 ))
                 break  # 한 단어에 여러 접미사가 매칭되면 첫 번째만 사용
 
-    # ── 4. CO_OCCURS: 예문에서 공기 관계 추출 ──
+    # ── 4. CO_OCCURS: 예문에서 공기 관계 추출 (문서당 max_cooccurrence_per_doc 상한) ──
     for doc in documents:
         if not doc.example:
             continue
         example_words = set(re.findall(r"\b[a-z]{3,}\b", doc.example.lower()))
-        for ew in example_words:
+        added_count = 0
+        for ew in sorted(example_words):  # 정렬로 결정적 선택 보장
+            if added_count >= max_cooccurrence_per_doc:
+                break
             if ew in word_lower_map and ew != doc.word.lower():
                 graph.add_relation(WordRelation(
                     source_word=doc.word,
@@ -280,6 +447,7 @@ def build_from_documents(graph: WordKnowledgeGraph, documents: list[Document]) -
                     relation_type=RelationType.CO_OCCURS,
                     weight=1.0,
                 ))
+                added_count += 1
 
     # ── 5. SAME_CATEGORY: 같은 source 내 단어 묶음 (최대 20개로 제한) ──
     source_groups: dict[str, list[str]] = {}
@@ -297,10 +465,17 @@ def build_from_documents(graph: WordKnowledgeGraph, documents: list[Document]) -
                     weight=0.5,
                 ))
 
+    total_edges = graph.edge_count()
+    if total_edges > 100_000:
+        logger.warning(
+            "그래프 엣지 수(%d)가 100,000을 초과했습니다. 성능에 영향을 줄 수 있습니다.",
+            total_edges,
+        )
+
     logger.info(
         "build_from_documents: 노드 %d개, 엣지 %d개 구축 완료",
         graph.node_count(),
-        graph.edge_count(),
+        total_edges,
     )
 
 

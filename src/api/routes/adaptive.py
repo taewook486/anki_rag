@@ -39,6 +39,7 @@ class AdaptiveRequest(BaseModel):
     question: str = Field(..., description="질문", min_length=1)
     source_filter: Optional[str] = Field(None, description="source 필터")
     deck_filter: Optional[str] = Field(None, description="deck 필터")
+    use_graph: bool = Field(True, description="Complex 전략에서 GraphRAG Fusion 사용 여부 (S2)")
 
 
 class AgentStepInfo(BaseModel):
@@ -87,6 +88,7 @@ async def adaptive_query(request: AdaptiveRequest) -> AdaptiveResponse:
             question=request.question,
             source_filter=request.source_filter,
             deck_filter=request.deck_filter,
+            use_graph=request.use_graph,
         )
 
         # 검색 결과에서 출처 정보 추출

@@ -16,6 +16,7 @@ from enum import Enum
 from typing import Optional
 
 from src.agent import AgentResult, LearningAgent
+from src.graph import WordKnowledgeGraph, graph_rag_fusion
 from src.rag import RAGPipeline
 from src.retriever import HybridRetriever
 
@@ -170,10 +171,13 @@ class AdaptiveRAG:
         retriever: HybridRetriever,
         rag: RAGPipeline,
         agent: LearningAgent,
+        graph: Optional[WordKnowledgeGraph] = None,
     ) -> None:
         self.retriever = retriever
         self.rag = rag
         self.agent = agent
+        # graph=None이면 GraphRAG Fusion 건너뜀
+        self.graph = graph
 
     def query(
         self,
@@ -182,6 +186,7 @@ class AdaptiveRAG:
         deck_filter: Optional[str] = None,
         stream: bool = False,
         on_chunk=None,
+        use_graph: bool = True,
     ) -> AdaptiveResult:
         """Adaptive RAG 질의
 
@@ -191,6 +196,7 @@ class AdaptiveRAG:
             deck_filter: deck 필터
             stream: 스트리밍 여부 (Simple/Moderate만 지원)
             on_chunk: 스트리밍 콜백
+            use_graph: True이고 graph 설정 시 Complex 경로에서 GraphRAG Fusion 적용 (S2 준수)
 
         Returns:
             AdaptiveResult (answer + complexity + strategy_used)
@@ -206,7 +212,7 @@ class AdaptiveRAG:
             return self._execute_simple(question, source_filter, deck_filter)
 
         if complexity == QueryComplexity.COMPLEX:
-            return self._execute_complex(question)
+            return self._execute_complex(question, use_graph=use_graph)
 
         # MODERATE (기본)
         return self._execute_moderate(
@@ -283,9 +289,48 @@ class AdaptiveRAG:
             search_results=self.rag.last_results,
         )
 
-    def _execute_complex(self, question: str) -> AdaptiveResult:
-        """Complex 전략: LearningAgent (ReAct 루프) 위임"""
+    def _execute_complex(
+        self,
+        question: str,
+        use_graph: bool = True,
+    ) -> AdaptiveResult:
+        """Complex 전략: LearningAgent (ReAct 루프) 위임 + GraphRAG Fusion 선택적 주입
+
+        Args:
+            question: 사용자 질문
+            use_graph: True이고 graph가 설정된 경우 GraphRAG Fusion 적용 (기본 True)
+        """
         logger.info("Adaptive RAG: Complex 전략 실행 (Agent)")
+
+        # GraphRAG Fusion 적용 — use_graph=True, graph 설정됨, 비어 있지 않은 경우만
+        if use_graph and self.graph is not None:
+            if self.graph.node_count() == 0:
+                logger.info(
+                    "Adaptive RAG: 그래프가 비어 있어 GraphRAG Fusion 건너뜀 (UB3)"
+                )
+            else:
+                # query_word: 질문의 첫 번째 소문자 토큰 사용
+                query_word = self._extract_query_word(question)
+                # 벡터 검색 결과를 기반으로 Fusion 수행
+                try:
+                    vector_results = self.retriever.search(query_word, top_k=5)
+                    fused = graph_rag_fusion(
+                        vector_results=vector_results,
+                        graph=self.graph,
+                        query_word=query_word,
+                        retriever=self.retriever,
+                        top_k=5,
+                    )
+                    logger.info(
+                        "Adaptive RAG: GraphRAG Fusion 완료 — %d개 결과", len(fused)
+                    )
+                except Exception:
+                    logger.debug("Adaptive RAG: GraphRAG Fusion 실패 — 계속 진행", exc_info=True)
+        else:
+            if not use_graph:
+                logger.debug("Adaptive RAG: use_graph=False — GraphRAG Fusion 건너뜀 (S2)")
+            else:
+                logger.debug("Adaptive RAG: graph 미설정 — GraphRAG Fusion 건너뜀")
 
         agent_result: AgentResult = self.agent.run(question)
 
@@ -295,6 +340,23 @@ class AdaptiveRAG:
             strategy_used="agent_react",
             agent_result=agent_result,
         )
+
+    def _extract_query_word(self, question: str) -> str:
+        """질문에서 검색용 핵심 단어를 추출한다.
+
+        전략: 첫 번째 영어 소문자 토큰을 반환.
+        영어 단어가 없으면 질문 전체를 반환.
+
+        Args:
+            question: 사용자 질문
+
+        Returns:
+            검색용 단어 (소문자)
+        """
+        tokens = re.findall(r"[a-zA-Z]+", question)
+        if tokens:
+            return tokens[0].lower()
+        return question.strip()
 
 
 # ───────────────────────────────────────────
