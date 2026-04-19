@@ -111,7 +111,7 @@ class TestGraphStatsRoute:
     def test_get_stats_returns_200(self):
         """Given 그래프가 초기화된 상태에서,
         When GET /api/graph/stats를 호출하면,
-        Then 200 응답과 node_count, edge_count, by_relation을 반환한다"""
+        Then 200 응답과 node_count, edge_count, per_relation을 반환한다"""
         mock_graph = _make_mock_graph()
 
         from src.api.main import app
@@ -124,14 +124,14 @@ class TestGraphStatsRoute:
         data = response.json()
         assert "node_count" in data
         assert "edge_count" in data
-        assert "by_relation" in data
+        assert "per_relation" in data
         assert isinstance(data["node_count"], int)
         assert isinstance(data["edge_count"], int)
-        assert isinstance(data["by_relation"], dict)
+        assert isinstance(data["per_relation"], dict)
 
     def test_get_stats_by_relation_keys(self):
         """Given stats를 조회할 때,
-        When by_relation을 확인하면,
+        When per_relation을 확인하면,
         Then RelationType 이름들이 키로 포함된다"""
         mock_graph = _make_mock_graph()
 
@@ -142,7 +142,7 @@ class TestGraphStatsRoute:
             response = client.get("/api/graph/stats")
 
         data = response.json()
-        by_rel = data["by_relation"]
+        by_rel = data["per_relation"]
         # RelationType 값 중 적어도 하나는 있어야 함
         valid_keys = {"SYNONYM", "ANTONYM", "DERIVED_FROM", "CO_OCCURS", "SAME_CATEGORY"}
         assert len(set(by_rel.keys()) & valid_keys) > 0

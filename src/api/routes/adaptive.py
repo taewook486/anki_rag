@@ -69,6 +69,9 @@ class AdaptiveResponse(BaseModel):
     sources: list[SourceInfo] = Field(default_factory=list)
     agent_steps: Optional[list[AgentStepInfo]] = None
     total_agent_steps: Optional[int] = None
+    # AC-F4: 그래프 사용 여부 및 그래프에서 추가된 단어 목록
+    graph_used: bool = Field(False, description="GraphRAG Fusion 실행 여부 (Complex 전략에서만 True 가능)")
+    graph_terms: list[str] = Field(default_factory=list, description="그래프에서 추가된 단어 목록")
 
 
 @router.post("/adaptive", response_model=AdaptiveResponse)
@@ -123,6 +126,8 @@ async def adaptive_query(request: AdaptiveRequest) -> AdaptiveResponse:
             sources=sources,
             agent_steps=agent_steps,
             total_agent_steps=total_agent_steps,
+            graph_used=result.graph_used,
+            graph_terms=result.graph_terms,
         )
     except ValueError as e:
         raise HTTPException(status_code=500, detail=f"설정 오류: {e}")

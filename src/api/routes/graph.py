@@ -57,7 +57,7 @@ class GraphStatsResponse(BaseModel):
 
     node_count: int
     edge_count: int
-    by_relation: dict[str, int]
+    per_relation: dict[str, int]
 
 
 # ---------------------------------------------------------------------------
@@ -110,23 +110,23 @@ async def get_graph_stats() -> GraphStatsResponse:
 
     - **node_count**: 전체 노드 수
     - **edge_count**: 전체 엣지 수
-    - **by_relation**: 관계 타입별 엣지 수
+    - **per_relation**: 관계 타입별 엣지 수
     """
     try:
         graph = get_graph()
 
         # 관계 타입별 엣지 수 집계
-        by_relation: dict[str, int] = {rt.value: 0 for rt in RelationType}
+        per_relation: dict[str, int] = {rt.value: 0 for rt in RelationType}
         if graph.is_available and graph._graph is not None:
             for _, _, data in graph._graph.edges(data=True):
                 rt_val = data.get("relation_type", "")
-                if rt_val in by_relation:
-                    by_relation[rt_val] += 1
+                if rt_val in per_relation:
+                    per_relation[rt_val] += 1
 
         return GraphStatsResponse(
             node_count=graph.node_count(),
             edge_count=graph.edge_count(),
-            by_relation=by_relation,
+            per_relation=per_relation,
         )
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"그래프 통계 조회 실패: {e}")

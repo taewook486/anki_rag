@@ -302,6 +302,10 @@ class AdaptiveRAG:
         """
         logger.info("Adaptive RAG: Complex 전략 실행 (Agent)")
 
+        # AC-F4: 그래프 사용 여부 추적
+        _graph_used = False
+        _graph_terms: list[str] = []
+
         # GraphRAG Fusion 적용 — use_graph=True, graph 설정됨, 비어 있지 않은 경우만
         if use_graph and self.graph is not None:
             if self.graph.node_count() == 0:
@@ -321,6 +325,15 @@ class AdaptiveRAG:
                         retriever=self.retriever,
                         top_k=5,
                     )
+                    # GraphRAG Fusion이 실제 호출됨 → graph_used=True 표시
+                    _graph_used = True
+                    # 벡터 결과에 없던 그래프 추가 단어 추출
+                    vector_words = {r.document.word.lower() for r in vector_results}
+                    _graph_terms = [
+                        r.document.word
+                        for r in fused
+                        if r.document.word.lower() not in vector_words
+                    ]
                     logger.info(
                         "Adaptive RAG: GraphRAG Fusion 완료 — %d개 결과", len(fused)
                     )
@@ -339,6 +352,8 @@ class AdaptiveRAG:
             complexity=QueryComplexity.COMPLEX,
             strategy_used="agent_react",
             agent_result=agent_result,
+            graph_used=_graph_used,
+            graph_terms=_graph_terms,
         )
 
     def _extract_query_word(self, question: str) -> str:
@@ -372,9 +387,14 @@ class AdaptiveResult:
         strategy_used: str,
         search_results: list | None = None,
         agent_result: AgentResult | None = None,
+        graph_used: bool = False,
+        graph_terms: list[str] | None = None,
     ) -> None:
         self.answer = answer
         self.complexity = complexity
         self.strategy_used = strategy_used
         self.search_results = search_results or []
         self.agent_result = agent_result
+        # AC-F4: 그래프 사용 여부 및 그래프에서 추가된 단어 목록
+        self.graph_used = graph_used
+        self.graph_terms: list[str] = graph_terms or []
