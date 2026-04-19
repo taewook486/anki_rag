@@ -219,3 +219,7 @@ doc/*.hwp
 .firebase/qdrant_data/
 data/
 qdrant_data/
+
+# graphify generated outputs (regenerable)
+graphify-out/
+doc/graphify-out/
