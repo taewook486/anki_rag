@@ -307,6 +307,37 @@ class WordKnowledgeGraph:
 # 그래프 자동 구축 헬퍼 (설계서 13.2)
 # ───────────────────────────────────────────
 
+def _extract_synonyms(word: str) -> list[str]:
+    """WordNet synsets에서 동일 synset의 다른 lemma들을 유의어로 반환한다.
+
+    # @MX:WARN: [AUTO] WordNet 미설치 시 빈 리스트 반환 (graceful degradation)
+    # @MX:REASON: [AUTO] nltk는 선택적 의존성 — 없어도 시스템이 동작해야 함
+
+    Args:
+        word: 대상 단어 (소문자 권장)
+
+    Returns:
+        유의어 목록 (자기 자신 제외, 정렬, 중복 제거). WordNet에 없거나 오류 시 빈 리스트.
+    """
+    if not _WORDNET_AVAILABLE or _wn is None:
+        return []
+
+    synonyms: set[str] = set()
+    try:
+        for synset in _wn.synsets(word):
+            for lemma in synset.lemmas():
+                name = lemma.name().lower().replace("_", " ")
+                if name and name != word.lower():
+                    synonyms.add(name)
+    except LookupError:
+        return []
+    except Exception:
+        logger.debug("SYNONYM 추출 실패 — 단어: %s", word)
+        return []
+
+    return sorted(synonyms)
+
+
 def _extract_antonyms(word: str) -> list[str]:
     """WordNet을 사용하여 단어의 반의어 목록을 추출한다.
 
@@ -410,6 +441,20 @@ def build_from_documents(
                 source_word=doc.word,
                 target_word=ant,
                 relation_type=RelationType.ANTONYM,
+            ))
+
+    # ── 2c. SYNONYM (WordNet 보강): 데이터셋 내 다른 Document.word와 매칭되는 WordNet 유의어만 엣지 추가 ──
+    # word_lower_map을 미리 구축해 데이터셋 외부 단어로의 dangling 엣지를 방지한다
+    _wn_synonym_word_lower_map: dict[str, str] = {doc.word.lower(): doc.word for doc in documents}
+    for doc in documents:
+        for syn in _extract_synonyms(doc.word):
+            syn_lower = syn.lower()
+            if syn_lower not in _wn_synonym_word_lower_map or syn_lower == doc.word.lower():
+                continue
+            graph.add_relation(WordRelation(
+                source_word=doc.word,
+                target_word=_wn_synonym_word_lower_map[syn_lower],
+                relation_type=RelationType.SYNONYM,
             ))
 
     # ── 3. DERIVED_FROM: 접미사 패턴으로 파생어 관계 추출 ──

@@ -10,6 +10,7 @@ from src.graph import (
     WordKnowledgeGraph,
     WordNode,
     WordRelation,
+    _extract_synonyms,
     build_from_documents,
     graph_rag_fusion,
 )
@@ -458,3 +459,49 @@ class TestCoOccurrenceCap:
 
         co = graph.get_related(words[0], relation_type=RelationType.CO_OCCURS)
         assert len(co) <= 10, f"CO_OCCURS 엣지 수 {len(co)}가 기본 상한 10을 초과"
+
+
+# ---------------------------------------------------------------------------
+# T3: SYNONYM — WordNet 기반 유의어 자동 추출
+# ---------------------------------------------------------------------------
+
+class TestSynonymExtraction:
+    """WordNet SYNONYM 자동 추출 테스트"""
+
+    def test_extract_synonyms_happy_glad(self):
+        """Given WordNet이 설치된 환경에서 'happy' 단어일 때,
+        When _extract_synonyms('happy')를 호출하면,
+        Then 결과에 'glad'가 포함된다
+        (WordNet의 happy synset에 glad lemma가 존재함을 검증)"""
+        result = _extract_synonyms("happy")
+        if not result:
+            # nltk / wordnet 미설치 환경 — graceful skip
+            pytest.skip("WordNet 미설치 환경")
+        assert "glad" in result, f"예상: 'glad' in {result}"
+
+    def test_build_from_documents_wordnet_synonym(self, graph: WordKnowledgeGraph):
+        """Given 'happy'와 'glad' 두 단어로 그래프를 빌드할 때,
+        When build_from_documents를 호출하면,
+        Then WordNet 보강으로 두 단어 사이에 SYNONYM 엣지가 생성된다"""
+        doc_happy = _make_doc(word="happy", meaning="행복한")
+        doc_glad = _make_doc(word="glad", meaning="기쁜")
+        build_from_documents(graph, [doc_happy, doc_glad])
+
+        synonyms_of_happy = graph.get_synonyms("happy")
+        synonyms_of_glad = graph.get_synonyms("glad")
+
+        # WordNet 유의어 관계가 없는 환경(nltk 미설치)에서는 doc.synonyms 기반만 동작
+        if not _extract_synonyms("happy"):
+            pytest.skip("WordNet 미설치 환경 — WordNet SYNONYM 보강 불가")
+
+        # WordNet 보강으로 happy↔glad SYNONYM 엣지가 생성되어야 한다
+        assert "glad" in synonyms_of_happy or "happy" in synonyms_of_glad, (
+            f"happy 유의어: {synonyms_of_happy}, glad 유의어: {synonyms_of_glad}"
+        )
+
+    def test_wordnet_synonym_graceful_skip(self):
+        """Given WordNet에 없는 단어 'xyzzyxyzzy'일 때,
+        When _extract_synonyms를 호출하면,
+        Then 예외 없이 빈 리스트를 반환한다"""
+        result = _extract_synonyms("xyzzyxyzzy")
+        assert result == [], f"예상 빈 리스트, 실제: {result}"
