@@ -10,6 +10,7 @@ from src.graph import (
     WordKnowledgeGraph,
     WordNode,
     WordRelation,
+    _WORDNET_AVAILABLE,
     build_from_documents,
     graph_rag_fusion,
 )
@@ -338,6 +339,7 @@ class TestGraphRagFusion:
 class TestAntonymExtraction:
     """WordNet ANTONYM 자동 추출 테스트"""
 
+    @pytest.mark.skipif(not _WORDNET_AVAILABLE, reason="nltk/WordNet 미설치")
     def test_antonym_happy_unhappy(self, graph: WordKnowledgeGraph):
         """Given 'happy' 단어로 그래프를 빌드할 때,
         When build_from_documents를 호출하면,
