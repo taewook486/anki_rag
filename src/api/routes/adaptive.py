@@ -4,7 +4,6 @@
     쿼리 복잡도를 자동 분류하여 최적 검색 전략으로 응답
 """
 
-import os
 from typing import Any, Optional
 
 from fastapi import APIRouter, HTTPException
@@ -12,8 +11,9 @@ from pydantic import BaseModel, Field
 
 from src.adaptive import AdaptiveRAG, AdaptiveResult, QueryComplexity
 from src.agent import LearningAgent
+from src.api.routes.graph import get_graph
+from src.api.routes.search import get_retriever
 from src.rag import RAGPipeline
-from src.retriever import HybridRetriever
 
 router = APIRouter()
 
@@ -25,11 +25,13 @@ def get_adaptive() -> AdaptiveRAG:
     """AdaptiveRAG 인스턴스 반환 (lazy initialization)"""
     global _adaptive
     if _adaptive is None:
-        location = os.getenv("QDRANT_LOCATION", "./qdrant_data")
-        retriever = HybridRetriever(location=location)
+        # @MX:NOTE: Qdrant local mode는 동일 경로 동시 접근 불가 — 다른 라우트와 retriever 싱글톤 공유
+        retriever = get_retriever()
         rag = RAGPipeline(retriever=retriever)
         agent = LearningAgent(retriever=retriever, rag=rag)
-        _adaptive = AdaptiveRAG(retriever=retriever, rag=rag, agent=agent)
+        # SPEC-GRAPHRAG-001 E3: Complex 경로에서 GraphRAG Fusion을 위해 그래프 주입
+        graph = get_graph()
+        _adaptive = AdaptiveRAG(retriever=retriever, rag=rag, agent=agent, graph=graph)
     return _adaptive
 
 
