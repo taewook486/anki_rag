@@ -264,13 +264,18 @@ def show_graph_page():
 
     st.markdown("---")
 
-    # 쿼리 입력
+    # 예시 버튼이 누른 단어를 위젯 인스턴스화 전에 처리 (Streamlit 제약)
+    # session_state는 widget key가 만들어진 뒤에는 수정 불가하므로 별도 보조 키 사용
+    default_word: str = st.session_state.pop("_graph_word_pending", "")
+    auto_run: bool = st.session_state.pop("_graph_auto_run", False)
+
+    # 쿼리 입력 (widget에 key를 부여하지 않아 외부 state와 충돌 방지)
     col_q, col_t, col_btn = st.columns([4, 2, 1])
     with col_q:
         word = st.text_input(
             "단어 입력",
+            value=default_word,
             placeholder="예: abandon, terminate, give, accept...",
-            key="graph_word",
         )
     with col_t:
         rel_filter = st.selectbox(
@@ -280,16 +285,16 @@ def show_graph_page():
     with col_btn:
         st.write("")
         st.write("")
-        go_btn = st.button("🔍 조회", use_container_width=True)
+        go_btn = st.button("🔍 조회", use_container_width=True) or auto_run
 
-    # 빠른 예시 단어
+    # 빠른 예시 단어 — 클릭 시 pending key 설정 후 rerun, 다음 사이클에서 자동 조회
     st.caption("빠른 예시 (클릭하여 조회):")
     example_cols = st.columns(6)
     for i, ex in enumerate(["abandon", "terminate", "accept", "begin", "quibble", "rescind"]):
         if example_cols[i].button(ex, key=f"ex_{ex}"):
-            st.session_state["graph_word"] = ex
-            word = ex
-            go_btn = True
+            st.session_state["_graph_word_pending"] = ex
+            st.session_state["_graph_auto_run"] = True
+            st.rerun()
 
     if not (go_btn and word):
         st.info("👆 단어를 입력하거나 위의 예시 버튼을 눌러 조회하세요.")
