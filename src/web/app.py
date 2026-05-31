@@ -21,12 +21,17 @@ def main():
     st.sidebar.markdown("---")
 
     # 페이지 선택
-    page = st.sidebar.radio("페이지 선택", ["🔍 검색", "💬 채팅", "⚙️ 관리"])
+    page = st.sidebar.radio(
+        "페이지 선택",
+        ["🔍 검색", "💬 채팅", "🕸️ 지식 그래프", "⚙️ 관리"],
+    )
 
     if page == "🔍 검색":
         show_search_page()
     elif page == "💬 채팅":
         show_chat_page()
+    elif page == "🕸️ 지식 그래프":
+        show_graph_page()
     elif page == "⚙️ 관리":
         show_admin_page()
 
@@ -154,6 +159,187 @@ def show_chat_page():
     if st.sidebar.button("🔄 새 대화"):
         st.session_state.messages = []
         st.rerun()
+
+
+_RELATION_STYLE = {
+    "SYNONYM":      {"color": "#2ca02c", "label": "유의어",   "icon": "🟢"},
+    "ANTONYM":      {"color": "#d62728", "label": "반의어",   "icon": "🔴"},
+    "DERIVED_FROM": {"color": "#1f77b4", "label": "파생어",   "icon": "🔵"},
+    "CO_OCCURS":    {"color": "#ff7f0e", "label": "공기 관계", "icon": "🟠"},
+    "SAME_CATEGORY":{"color": "#9467bd", "label": "동일 카테고리", "icon": "🟣"},
+}
+
+
+def _draw_graph_plot(center_word: str, related: list[dict]):
+    """중심 단어와 인접 노드를 Plotly로 그린다. 방사형 레이아웃."""
+    import math
+
+    import plotly.graph_objects as go
+
+    if not related:
+        return None
+
+    # 방사형 배치: 중심 (0,0) + 인접 N개를 원주 위에 균등 분포
+    n = len(related)
+    positions: dict[str, tuple[float, float]] = {center_word: (0.0, 0.0)}
+    for i, item in enumerate(related):
+        theta = 2 * math.pi * i / n
+        positions[item["word"]] = (math.cos(theta), math.sin(theta))
+
+    # 엣지 (관계 타입별로 분리하여 색상 구분)
+    edge_traces = []
+    for rel_type, style in _RELATION_STYLE.items():
+        xs, ys = [], []
+        for item in related:
+            if item["relation_type"] != rel_type:
+                continue
+            x0, y0 = positions[center_word]
+            x1, y1 = positions[item["word"]]
+            xs += [x0, x1, None]
+            ys += [y0, y1, None]
+        if xs:
+            edge_traces.append(go.Scatter(
+                x=xs, y=ys, mode="lines",
+                line=dict(color=style["color"], width=2),
+                hoverinfo="none",
+                name=f"{style['icon']} {style['label']}",
+            ))
+
+    # 노드
+    node_x, node_y, node_text, node_size, node_color = [], [], [], [], []
+    for word, (x, y) in positions.items():
+        node_x.append(x)
+        node_y.append(y)
+        node_text.append(word)
+        node_size.append(40 if word == center_word else 26)
+        node_color.append("#ffd166" if word == center_word else "#a8dadc")
+
+    node_trace = go.Scatter(
+        x=node_x, y=node_y,
+        mode="markers+text",
+        text=node_text,
+        textposition="top center",
+        textfont=dict(size=14, color="#1a1a1a"),
+        marker=dict(size=node_size, color=node_color,
+                    line=dict(width=2, color="#333")),
+        hoverinfo="text",
+        showlegend=False,
+    )
+
+    fig = go.Figure(data=edge_traces + [node_trace])
+    fig.update_layout(
+        showlegend=True,
+        margin=dict(l=10, r=10, t=10, b=10),
+        xaxis=dict(visible=False),
+        yaxis=dict(visible=False),
+        height=520,
+        plot_bgcolor="#fafafa",
+        legend=dict(orientation="h", yanchor="bottom", y=-0.15, x=0.02),
+    )
+    return fig
+
+
+def show_graph_page():
+    """지식 그래프 페이지 — WordNet/규칙 기반 단어 관계 시각화"""
+    st.header("🕸️ 지식 그래프 (GraphRAG v2.0)")
+
+    # 그래프 통계 (상단 카드)
+    try:
+        stats_resp = requests.get(f"{API_BASE_URL}/api/graph/stats", timeout=10)
+        if stats_resp.status_code == 200:
+            stats = stats_resp.json()
+            c1, c2, c3, c4, c5, c6 = st.columns(6)
+            c1.metric("노드", f"{stats.get('node_count', 0):,}")
+            c2.metric("엣지", f"{stats.get('edge_count', 0):,}")
+            per = stats.get("per_relation", {})
+            c3.metric("🟢 SYNONYM", f"{per.get('SYNONYM', 0):,}")
+            c4.metric("🔴 ANTONYM", f"{per.get('ANTONYM', 0):,}")
+            c5.metric("🔵 DERIVED", f"{per.get('DERIVED_FROM', 0):,}")
+            c6.metric("🟠 CO_OCCUR", f"{per.get('CO_OCCURS', 0):,}")
+        else:
+            st.warning("그래프 통계를 불러올 수 없습니다.")
+    except requests.exceptions.RequestException as e:
+        st.error(f"API 연결 실패: {e}")
+        return
+
+    st.markdown("---")
+
+    # 쿼리 입력
+    col_q, col_t, col_btn = st.columns([4, 2, 1])
+    with col_q:
+        word = st.text_input(
+            "단어 입력",
+            placeholder="예: abandon, terminate, give, accept...",
+            key="graph_word",
+        )
+    with col_t:
+        rel_filter = st.selectbox(
+            "관계 타입 필터",
+            ["전체", "SYNONYM", "ANTONYM", "DERIVED_FROM", "CO_OCCURS", "SAME_CATEGORY"],
+        )
+    with col_btn:
+        st.write("")
+        st.write("")
+        go_btn = st.button("🔍 조회", use_container_width=True)
+
+    # 빠른 예시 단어
+    st.caption("빠른 예시 (클릭하여 조회):")
+    example_cols = st.columns(6)
+    for i, ex in enumerate(["abandon", "terminate", "accept", "begin", "quibble", "rescind"]):
+        if example_cols[i].button(ex, key=f"ex_{ex}"):
+            st.session_state["graph_word"] = ex
+            word = ex
+            go_btn = True
+
+    if not (go_btn and word):
+        st.info("👆 단어를 입력하거나 위의 예시 버튼을 눌러 조회하세요.")
+        return
+
+    # API 호출
+    params = {}
+    if rel_filter != "전체":
+        params["relation_type"] = rel_filter
+    try:
+        with st.spinner(f"그래프 조회 중: {word}"):
+            resp = requests.get(
+                f"{API_BASE_URL}/api/graph/related/{word}",
+                params=params,
+                timeout=15,
+            )
+            resp.raise_for_status()
+            data = resp.json()
+    except requests.exceptions.RequestException as e:
+        st.error(f"조회 실패: {e}")
+        return
+
+    related = data.get("related", [])
+    if not related:
+        st.warning(
+            f"`{word}` 에 대한 {('전체' if rel_filter=='전체' else rel_filter)} 관계가 그래프에 없습니다. "
+            f"빠른 예시 단어로 시도해 보세요."
+        )
+        return
+
+    # 좌: 그래프 시각화 / 우: 관계 목록
+    st.success(f"`{word}` 의 인접 단어 {len(related)}개를 찾았습니다.")
+    col_viz, col_list = st.columns([3, 2])
+
+    with col_viz:
+        fig = _draw_graph_plot(word, related)
+        if fig is not None:
+            st.plotly_chart(fig, use_container_width=True)
+
+    with col_list:
+        st.markdown("**관계 목록**")
+        for item in related:
+            style = _RELATION_STYLE.get(item["relation_type"], {})
+            icon = style.get("icon", "")
+            label = style.get("label", item["relation_type"])
+            st.markdown(
+                f"{icon} **{item['word']}** — _{label}_  \n"
+                f"<span style='color:#666;font-size:0.85em'>({item['relation_type']})</span>",
+                unsafe_allow_html=True,
+            )
 
 
 def _trigger_indexing(data_dir: str, recreate: bool) -> None:
