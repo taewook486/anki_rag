@@ -91,3 +91,31 @@ class TestQdrantIndexerGraphIntegration:
         indexer.upsert(docs, embeddings)
 
         assert os.path.exists(graph_path + ".pkl"), ".pkl 파일이 생성되지 않았습니다"
+
+
+class TestQdrantIndexerSharedClient:
+    """SPEC: 외부 주입된 QdrantClient 공유 — 동시 접근 버그 수정 (RED)"""
+
+    def test_indexer_accepts_external_client(self, tmp_path):
+        """Given 외부에서 생성된 QdrantClient를,
+        When client= 키워드 인자로 주입하면,
+        Then indexer.client는 주입된 인스턴스와 동일해야 한다."""
+        from qdrant_client import QdrantClient
+        external_client = QdrantClient(":memory:")
+        indexer = QdrantIndexer(
+            location=":memory:",
+            graph_persist_path=str(tmp_path / "g1"),
+            client=external_client,
+        )
+        assert indexer.client is external_client
+
+    def test_indexer_falls_back_to_location_when_no_client(self, tmp_path):
+        """Given client 인자가 없을 때,
+        When 기존 시그니처대로 indexer를 생성하면,
+        Then location 기반으로 자체 QdrantClient를 만든다 (기존 동작 보존)."""
+        from qdrant_client import QdrantClient
+        indexer = QdrantIndexer(
+            location=":memory:",
+            graph_persist_path=str(tmp_path / "g2"),
+        )
+        assert isinstance(indexer.client, QdrantClient)

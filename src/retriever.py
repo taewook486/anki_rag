@@ -32,6 +32,8 @@ class HybridRetriever:
         collection_name: str = "anki_rag",
         rrf_k: int = 60,
         fetch_multiplier: int = 3,
+        *,
+        client: Optional[QdrantClient] = None,
     ):
         """
         Args:
@@ -40,11 +42,16 @@ class HybridRetriever:
             rrf_k: RRF 상수 (기본값 60)
             fetch_multiplier: RRF 후보 풀 확대 배수 — Dense·Sparse 각각
                               top_k * fetch_multiplier 개를 가져온 뒤 RRF 적용
+            client: 외부에서 주입된 QdrantClient (선택). 제공되면 location은 무시되고
+                    이 인스턴스가 그대로 사용된다. Qdrant 로컬 파일 모드 동시 접근
+                    버그를 회피하기 위한 공유 클라이언트 주입용.
         """
         self.collection_name = collection_name
         self.rrf_k = rrf_k
         self.fetch_multiplier = fetch_multiplier
-        if location == ":memory:" or location.startswith("http"):
+        if client is not None:
+            self.client = client
+        elif location == ":memory:" or location.startswith("http"):
             self.client = QdrantClient(location=location)
         else:
             self.client = QdrantClient(path=location)

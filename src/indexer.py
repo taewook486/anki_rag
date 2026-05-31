@@ -37,6 +37,8 @@ class QdrantIndexer:
         collection_name: str = "anki_rag",
         vector_size: int = 1024,
         graph_persist_path: Optional[str] = None,
+        *,
+        client: Optional[QdrantClient] = None,
     ):
         """
         Args:
@@ -44,10 +46,15 @@ class QdrantIndexer:
             collection_name: 컬렉션 이름
             vector_size: 벡터 차원 (BGE-M3: 1024)
             graph_persist_path: 그래프 영속화 경로 (확장자 제외). None이면 기본 경로 사용.
+            client: 외부에서 주입된 QdrantClient (선택). 제공되면 location은 무시되고
+                    이 인스턴스가 그대로 사용된다. Qdrant 로컬 파일 모드 동시 접근
+                    버그를 회피하기 위한 공유 클라이언트 주입용.
         """
         self.collection_name = collection_name
         self.vector_size = vector_size
-        if location == ":memory:" or location.startswith("http"):
+        if client is not None:
+            self.client = client
+        elif location == ":memory:" or location.startswith("http"):
             self.client = QdrantClient(location=location)
         else:
             self.client = QdrantClient(path=location)

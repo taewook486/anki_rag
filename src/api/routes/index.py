@@ -144,8 +144,14 @@ def _run_indexing(data_dir: str, source: str | None, recreate: bool) -> None:
 
         update(message="Qdrant 인덱싱 중...", progress=0.85)
 
+        # 공유 QdrantClient 주입 — 검색 라우트와 동일 인스턴스를 사용해
+        # 로컬 파일 모드 동시 접근 에러를 회피한다.
+        from src.api.deps import get_qdrant_client
         qdrant_location = os.getenv("QDRANT_LOCATION", "./qdrant_data")
-        indexer = QdrantIndexer(location=qdrant_location)
+        indexer = QdrantIndexer(
+            location=qdrant_location,
+            client=get_qdrant_client(),
+        )
         indexer.create_collection(recreate=recreate)
         indexer.upsert(all_documents, all_embeddings)
 

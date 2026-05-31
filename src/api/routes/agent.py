@@ -4,15 +4,14 @@
     LearningAgent ReAct 루프를 통해 멀티스텝 질의응답 수행
 """
 
-import os
 from typing import Any, Optional
 
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, Field
 
 from src.agent import AgentResult, LearningAgent
+from src.api.routes.search import get_retriever
 from src.rag import RAGPipeline
-from src.retriever import HybridRetriever
 
 router = APIRouter()
 
@@ -21,11 +20,14 @@ _agent: Optional[LearningAgent] = None
 
 
 def get_agent() -> LearningAgent:
-    """LearningAgent 인스턴스 반환 (lazy initialization)"""
+    """LearningAgent 인스턴스 반환 (lazy initialization).
+
+    공유 HybridRetriever (get_retriever)를 재사용해 검색 라우트와 동일한
+    QdrantClient 인스턴스를 사용한다 — 로컬 파일 모드 동시 접근 버그 회피.
+    """
     global _agent
     if _agent is None:
-        location = os.getenv("QDRANT_LOCATION", "./qdrant_data")
-        retriever = HybridRetriever(location=location)
+        retriever = get_retriever()
         rag = RAGPipeline(retriever=retriever)
         _agent = LearningAgent(retriever=retriever, rag=rag)
     return _agent

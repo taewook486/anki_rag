@@ -6,6 +6,7 @@ from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, Field
 from typing import Optional, List
 
+from src.api.deps import get_qdrant_client
 from src.retriever import HybridRetriever
 
 router = APIRouter()
@@ -15,11 +16,15 @@ _retriever: Optional[HybridRetriever] = None
 
 
 def get_retriever() -> HybridRetriever:
-    """Retriever 인스턴스 반환 (lazy initialization)"""
+    """Retriever 인스턴스 반환 (lazy initialization).
+
+    공유 QdrantClient (get_qdrant_client)를 주입해 인덱싱 라우트와 동일 인스턴스를
+    공유한다 — Qdrant 로컬 파일 모드 동시 접근 버그 회피.
+    """
     global _retriever
     if _retriever is None:
         location = os.getenv("QDRANT_LOCATION", "./qdrant_data")
-        _retriever = HybridRetriever(location=location)
+        _retriever = HybridRetriever(location=location, client=get_qdrant_client())
     return _retriever
 
 
