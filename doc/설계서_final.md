@@ -8,49 +8,51 @@
 
 **버전**: 기말 v2.0 (중간 제출본 + 구현 결과 확장)
 
----
-
 ## 목차
 
-1. 프로젝트 개요
-2. 데이터 분석 및 전처리
-3. 시스템 아키텍처
-4. 핵심 모듈 설계
-5. 검색 성능 향상 설계
-6. 지식 그래프 연계 설계
-7. Agentic AI Agent 구현 방향
-8. 최신 RAG 트렌드 반영
-9. 기말 구현 결과 종합 **[신규]**
+1.  프로젝트 개요
+2.  데이터 분석 및 전처리
+3.  시스템 아키텍처
+4.  핵심 모듈 설계
+5.  검색 성능 향상 설계
+6.  지식 그래프 연계 설계
+7.  Agentic AI Agent 구현 방향
+8.  최신 RAG 트렌드 반영
+9.  기말 구현 결과 종합 **[신규]**
 10. 정량 측정 지표 **[신규]**
 11. 시연 시나리오 **[신규]**
 12. 결론 및 향후 계획
 
----
-
 ## 기말 업데이트 요약
+본 보고서는 중간 제출본(설계 단계)에 기말 구현 결과를 추가한 최종판이다. 본문 내 변경 사항은 다음 두 가지 방식으로 구분 표기한다.
 
-본 보고서는 중간 제출본(설계 단계)에 **기말 구현 결과**를 추가한 최종판이다. 본문 내 변경 사항은 다음 두 가지 방식으로 구분 표기한다.
+1.  **[업데이트]** 인용 박스: 중간 본문의 특정 문단에 대해 구현 시점의 결정이나 결과를 보강한 부분.
 
-- **[업데이트]** 인용 박스: 중간 본문의 특정 문단에 대해 구현 시점의 결정이나 결과를 보강한 부분.
-- **[신규] 챕터 9~11**: 구현 결과, 측정 지표, 시연 시나리오를 새로 작성한 챕터.
+[신규] 챕터 9~11: 구현 결과, 측정 지표, 시연 시나리오를 새로 작성한 챕터.
 
 핵심 변경 요약:
 
-| 영역 | 중간 (4/18 기준) | 기말 (5/31 기준) |
-|------|------------------|------------------|
-| RAG 기본 파이프라인 | v1.1 구현 완료 | 유지 (회귀 통과) |
-| Agentic Agent (ReAct) | 설계 단계 | v1.2 구현 완료 (8e51a98) |
-| Adaptive RAG | 설계 단계 | v1.3 구현 완료 (f6b8bfb) |
-| GraphRAG Fusion | 설계 단계 | v2.0 구현 완료 (6804019, 5ce824c) |
-| LLM 프로바이더 | 단일(GLM glm-5) | 다중(Anthropic claude-sonnet-4-6 + GLM 폴백) |
-| API 엔드포인트 | 5종 | 9종 (+ /api/adaptive, /api/graph/related, /api/graph/stats, /api/agent) |
-| 테스트 | 78개 | 167개 (수집 기준) |
-| 인덱싱 규모 | ~24K 문서 | 73,410 포인트 (Qdrant 컬렉션 anki_rag) |
+  ----------------------------------------------------------------------------------------------------------------------
+  영역                    중간 (4/18 기준)     기말 (5/31 기준)
+  ----------------------- -------------------- -------------------------------------------------------------------------
+  RAG 기본 파이프라인     v1.1 구현 완료       유지 (회귀 통과)
 
----
+  Agentic Agent (ReAct)   설계 단계            v1.2 구현 완료
+
+  Adaptive RAG            설계 단계            v1.3 구현 완료
+
+  GraphRAG Fusion         설계 단계            v2.0 구현 완료
+
+  LLM 프로바이더          단일(GLM glm-5)      다중(Anthropic claude-sonnet-4-6 + GLM 폴백)
+
+  API 엔드포인트          5종                  9종 (+ /api/adaptive, /api/graph/related, /api/graph/stats, /api/agent)
+
+  테스트                  78개                 167개 (수집 기준)
+
+  인덱싱 규모             ~24K 문서           73,410 포인트 (Qdrant 컬렉션 anki_rag)
+  ----------------------------------------------------------------------------------------------------------------------
 
 ## 1. 프로젝트 개요
-
 ### 1.1 문제 정의
 
 Anki는 간격 반복(Spaced Repetition) 기반의 플래시카드 학습 도구로, 본 프로젝트에서는 개인적으로 약 4년간 축적한 24,472개의 영어 학습 데이터를 활용한다. 이 데이터에는 TOEFL 단어, 편입 영단어, 해커스 토익, 구동사, 원서 발췌 문장 등이 포함되어 있다.
@@ -60,44 +62,50 @@ Anki는 간격 반복(Spaced Repetition) 기반의 플래시카드 학습 도구
 이러한 한계를 해결하기 위해 RAG(Retrieval-Augmented Generation) 아키텍처를 적용하여, Anki 데이터를 벡터 DB에 저장하고 하이브리드 검색과 LLM 응답 생성을 결합한 지능형 학습 도우미를 설계하였다.
 
 ### 1.2 핵심 사용 시나리오
+  ----------------------------------------------------------------------------
+  시나리오         입력 예시                     기대 결과
+  ---------------- ----------------------------- -----------------------------
+  단어 검색        "abandon의 뜻은?"             정의 + 예문 + 발음 반환
 
-| 시나리오 | 입력 예시 | 기대 결과 |
-|---------|---------|---------|
-| 단어 검색 | "abandon의 뜻은?" | 정의 + 예문 + 발음 반환 |
-| 의미 기반 검색 | "포기하다 영어 예문" | 의미적으로 유사한 예문 목록 |
-| 유사어 탐색 | "give up 관련 구동사" | 유의어 구동사 목록 |
-| 복합 질의 | "TOEFL 경제 관련 단어 정리" | 필터 + 시맨틱 검색 결과 |
+  의미 기반 검색   "포기하다 영어 예문"          의미적으로 유사한 예문 목록
 
----
+  유사어 탐색      "give up 관련 구동사"         유의어 구동사 목록
+
+  복합 질의        "TOEFL 경제 관련 단어 정리"   필터 + 시맨틱 검색 결과
+  ----------------------------------------------------------------------------
 
 ## 2. 데이터 분석 및 전처리
-
 ### 2.1 데이터 구성
 
 총 24,472개 문서를 6개 소스에서 수집하였다.
 
-| 소스 | 포맷 | 카드 수 | 특징 |
-|------|------|---------|------|
-| TOEFL 영단어 | .apkg (anki2) | 5,308 | 단어-뜻 쌍, 오디오 없음 |
-| 편입 영단어 2022 | .apkg (anki2) | 3,262 | 단어-뜻 쌍, 오디오 없음 |
-| 해커스 토익 | .apkg (anki21) | 1,227 | 단어+뜻+발음+예문, Forvo 오디오 |
-| 해커스-초록이 | .apkg (anki21) | 2,438 | 단어+뜻+발음+예문, Forvo 오디오 |
-| 구동사 | .apkg (anki21) | 2,237 | 구동사+뜻+예문, 오디오 포함 |
-| 원서 1만 문장 | .txt (탭 구분) | 10,000 | 영문 문장-한글 번역 쌍 |
+  --------------------------------------------------------------------------------
+  소스               포맷             카드 수    특징
+  ------------------ ---------------- ---------- ---------------------------------
+  TOEFL 영단어       .apkg (anki2)    5,308      단어-뜻 쌍, 오디오 없음
 
-> **[업데이트]** 기말 시점 실측 인덱스 규모는 Qdrant 컬렉션 `anki_rag` 기준 **73,410 포인트**이다. 이는 원본 24,472 카드 + 다중 필드 청킹(단어/뜻/예문/예문 한글 번역) 결과이다. 컬렉션이 20,000 포인트를 초과하므로 로컬 파일 모드는 비권장 경고가 발생하며, 운영 단계에서는 Qdrant Docker 서버로 전환할 계획이다.
+  편입 영단어 2022   .apkg (anki2)    3,262      단어-뜻 쌍, 오디오 없음
+
+  해커스 토익        .apkg (anki21)   1,227      단어+뜻+발음+예문, Forvo 오디오
+
+  해커스-초록이      .apkg (anki21)   2,438      단어+뜻+발음+예문, Forvo 오디오
+
+  구동사             .apkg (anki21)   2,237      구동사+뜻+예문, 오디오 포함
+
+  원서 1만 문장      .txt (탭 구분)   10,000     영문 문장-한글 번역 쌍
+  --------------------------------------------------------------------------------
+
+> **[업데이트]** 기말 시점 실측 인덱스 규모는 Qdrant 컬렉션 anki_rag 기준 **73,410 포인트**이다. 이는 원본 24,472 카드 + 다중 필드 청킹(단어/뜻/예문/예문 한글 번역) 결과이다. 컬렉션이 20,000 포인트를 초과하므로 로컬 파일 모드는 비권장 경고가 발생하며, 운영 단계에서는 Qdrant Docker 서버로 전환할 계획이다.
 
 ### 2.2 Anki 파일 구조와 파싱 과정
 
 Anki의 .apkg 파일은 실제로는 ZIP 아카이브이며, 내부에 SQLite 데이터베이스와 미디어 파일이 들어 있다. 처음에는 단순히 SQLite를 열면 될 것으로 생각했으나, 실제로는 몇 가지 까다로운 점이 있었다.
 
-첫째, Anki 버전에 따라 DB 파일명이 다르다. 신규 버전은 `collection.anki21`, 구버전은 `collection.anki2`를 사용하므로 두 경우를 모두 처리해야 했다. 둘째, 카드의 필드 값이 `notes.flds` 컬럼에 `\x1f`(ASCII 31) 문자로 구분되어 하나의 문자열에 합쳐져 있어서, 노트 타입별 필드 순서를 `col.models` JSON에서 먼저 파악한 후 매핑해야 했다. 셋째, 일부 필드에 HTML 태그가 섞여 있어 BeautifulSoup으로 태그를 제거하는 전처리가 필요했다.
+첫째, Anki 버전에 따라 DB 파일명이 다르다. 신규 버전은 collection.anki21, 구버전은 collection.anki2를 사용하므로 두 경우를 모두 처리해야 했다. 둘째, 카드의 필드 값이 notes.flds 컬럼에 \(ASCII 31) 문자로 구분되어 하나의 문자열에 합쳐져 있어서, 노트 타입별 필드 순서를 col.models JSON에서 먼저 파악한 후 매핑해야 했다. 셋째, 일부 필드에 HTML 태그가 섞여 있어 BeautifulSoup으로 태그를 제거하는 전처리가 필요했다.
 
-오디오 파일의 경우, ZIP 내 `media` 파일(JSON)이 숫자 키와 파일명을 매핑하고 있으며, 카드 필드에서 `[sound:파일명]` 패턴을 정규식으로 추출하여 해당 오디오를 연결하였다.
+오디오 파일의 경우, ZIP 내 media 파일(JSON)이 숫자 키와 파일명을 매핑하고 있으며, 카드 필드에서 [sound:파일명\] 패턴을 정규식으로 추출하여 해당 오디오를 연결하였다.
 
-텍스트 파일(10,000문장)은 탭 구분 형식인데, UTF-8 BOM이 포함된 파일이 있어서 `utf-8-sig` 인코딩으로 처리해야 첫 번째 필드가 깨지지 않는다는 점을 발견하였다.
-
----
+텍스트 파일(10,000문장)은 탭 구분 형식인데, UTF-8 BOM이 포함된 파일이 있어서 utf-8-sig 인코딩으로 처리해야 첫 번째 필드가 깨지지 않는다는 점을 발견하였다.
 
 ## 3. 시스템 아키텍처
 
@@ -107,11 +115,11 @@ Anki의 .apkg 파일은 실제로는 ZIP 아카이브이며, 내부에 SQLite �
 
 **[그림 1] 전체 시스템 구성도**
 
-- **인터페이스 레이어**: CLI, FastAPI(REST API), Streamlit(Web UI)의 세 가지 진입점 제공
-- **코어 레이어**: 파서(parser), 임베더(embedder), 인덱서(indexer), 리트리버(retriever), RAG 파이프라인, 오디오 플레이어 등 7개 핵심 모듈
-- **인프라 레이어**: Qdrant 벡터 DB(Dense+Sparse 저장), LLM API(OpenAI 호환 인터페이스)
+2.  **인터페이스 레이어**: CLI, FastAPI(REST API), Streamlit(Web UI)의 세 가지 진입점 제공
+3.  **코어 레이어**: 파서(parser), 임베더(embedder), 인덱서(indexer), 리트리버(retriever), RAG 파이프라인, 오디오 플레이어 등 7개 핵심 모듈
+4.  **인프라 레이어**: Qdrant 벡터 DB(Dense+Sparse 저장), LLM API(OpenAI 호환 인터페이스)
 
-> **[업데이트]** 기말 시점에는 코어 레이어에 두 모듈이 추가되었다. `src/agent.py`(412라인 RAG와 별개의 ReAct 루프 + 자기 교정), `src/adaptive.py`(쿼리 복잡도 분류 + 전략 라우터), `src/graph.py`(594라인 지식 그래프 빌드/탐색). 따라서 코어 레이어는 9개 모듈로 확장되었다. 자세한 구조도는 `.moai/project/codemap.md`에 시각화되어 있다.
+> **[업데이트]** 기말 시점에는 코어 레이어에 두 모듈이 추가되었다. src/agent.py(412라인 RAG와 별개의 ReAct 루프 + 자기 교정), src/adaptive.py(쿼리 복잡도 분류 + 전략 라우터), src/graph.py(594라인 지식 그래프 빌드/탐색). 따라서 코어 레이어는 9개 모듈로 확장되었다.
 
 ### 3.2 데이터 처리 흐름
 
@@ -127,35 +135,44 @@ Anki의 .apkg 파일은 실제로는 ZIP 아카이브이며, 내부에 SQLite �
 
 *(검색: Query → Classifier → {Dense | Hybrid RRF | Agent ReAct} → RAG → LLM → Answer)*
 
-> **[업데이트]** 인덱싱 흐름 끝에 그래프 빌더가 추가되었다. `QdrantIndexer.index()`는 벡터 인덱싱 완료 후 자동으로 `GraphBuilder.build()`를 호출하여 단어 간 관계 그래프를 생성하고, `data/graph.pkl`(pickle 직렬화) 및 `data/graph.graphml`(상호운용 포맷)로 이중 저장한다. 검색 흐름은 Adaptive 라우터를 거쳐 3개 전략으로 분기된다(11.1절 시연 참조).
+> **[업데이트]** 인덱싱 흐름 끝에 그래프 빌더가 추가되었다. QdrantIndexer.index()는 벡터 인덱싱 완료 후 자동으로 GraphBuilder.build()를 호출하여 단어 간 관계 그래프를 생성하고, data/graph.pkl(pickle 직렬화) 및 data/graph.graphml(상호운용 포맷)로 이중 저장한다. 검색 흐름은 Adaptive 라우터를 거쳐 3개 전략으로 분기된다(11.1절 시연 참조).
 
 ### 3.3 Web 레이어
-
 FastAPI로 REST API 서버를 구성하고, Streamlit으로 Web UI를 제공한다.
 
-| 엔드포인트 | 메서드 | 기능 |
-|-----------|--------|------|
-| /api/search | POST | 하이브리드 검색 (source/deck 필터 지원) |
-| /api/query | POST | RAG 기반 질의응답 |
-| /api/audio/{id} | GET | 오디오 파일 스트리밍 |
-| /api/index | POST | 인덱싱 실행 |
-| /api/adaptive | POST | Adaptive RAG 통합 엔드포인트 |
+  ----------------------------------------------------------------------
+  엔드포인트         메서드    기능
+  ------------------ --------- -----------------------------------------
+  /api/search        POST      하이브리드 검색 (source/deck 필터 지원)
+
+  /api/query         POST      RAG 기반 질의응답
+
+  /api/audio/{id}    GET       오디오 파일 스트리밍
+
+  /api/index         POST      인덱싱 실행
+
+  /api/adaptive      POST      Adaptive RAG 통합 엔드포인트
+  ----------------------------------------------------------------------
 
 Streamlit UI는 검색 페이지, 채팅 페이지, 관리 페이지로 구성하였다. 검색 페이지에서는 소스별 필터를 제공하고, 채팅 페이지에서는 RAG 기반 대화형 질의응답을 지원한다.
 
-> **[업데이트]** 기말 시점에 API 엔드포인트가 9종으로 확장되었다. 신규 추가 분은 다음과 같다.
->
-> | 엔드포인트 | 메서드 | 기능 |
-> |-----------|--------|------|
-> | /api/agent | POST | ReAct Agent 직접 호출 (Complex 전용) |
-> | /api/cache/stats | GET | 임베딩 캐시 통계 |
-> | /api/cache | DELETE | 캐시 비우기 |
-> | /api/graph/related/{word} | GET | 단어 관련어 조회 (관계 타입 필터) |
-> | /api/graph/stats | GET | 그래프 통계 (노드/엣지/per_relation) |
->
-> Streamlit UI에는 "지식 그래프" 탭이 추가되어 Plotly 기반 인터랙티브 시각화를 제공한다.
+> [업데이트] 기말 시점에 API 엔드포인트가 9종으로 확장되었다. 신규 추가 분은 다음과 같다.
 
----
+  -----------------------------------------------------------------------------
+  엔드포인트                  메서드     기능
+  --------------------------- ---------- --------------------------------------
+  /api/agent                  POST       ReAct Agent 직접 호출 (Complex 전용)
+
+  /api/cache/stats            GET        임베딩 캐시 통계
+
+  /api/cache                  DELETE     캐시 비우기
+
+  /api/graph/related/{word}   GET        단어 관련어 조회 (관계 타입 필터)
+
+  /api/graph/stats            GET        그래프 통계 (노드/엣지/per_relation)
+  -----------------------------------------------------------------------------
+
+> Streamlit UI에는 "지식 그래프" 탭이 추가되어 Plotly 기반 인터랙티브 시각화를 제공한다.
 
 ## 4. 핵심 모듈 설계
 
@@ -168,13 +185,11 @@ Streamlit UI는 검색 페이지, 채팅 페이지, 관리 페이지로 구성�
 Dense 벡터는 1024차원 float32이며 코사인 유사도로 비교한다. Sparse 벡터는 SPLADE 방식의 토큰 가중치로, 특정 키워드가 문서에 얼마나 중요한지를 나타낸다. CUDA GPU가 있으면 fp16을 활성화하고, CPU 환경에서는 자동으로 비활성화하도록 처리하였다.
 
 ### 4.2 벡터 DB 선택: Qdrant
-
 벡터 DB로는 ChromaDB, Pinecone, Weaviate 등을 검토하였다. ChromaDB는 설치가 간편하지만 Named Vector(한 컬렉션에 dense와 sparse를 동시에 저장)를 지원하지 않아서 하이브리드 검색 구현이 어려웠다. Pinecone은 클라우드 전용이라 로컬 개발에 불편했다. Qdrant는 Named Vector를 지원하고, 로컬 파일 모드와 인메모리 모드를 모두 제공하여 개발과 테스트에 편리했다.
 
 Qdrant에 dense와 sparse 두 개의 Named Vector를 설정하고, 페이로드에는 word, meaning, pronunciation, example, source, deck 등의 메타데이터를 함께 저장한다.
 
 ### 4.3 하이브리드 검색과 RRF Fusion
-
 Dense 검색은 의미적 유사성을 잘 잡아내지만 정확한 단어 매칭에 약하고, Sparse 검색은 키워드 매칭에 강하지만 유의어를 놓치기 쉽다. 두 검색 방식을 결합하기 위해 RRF(Reciprocal Rank Fusion) 알고리즘을 적용하였다.
 
 RRF의 핵심 수식은 다음과 같다:
@@ -191,35 +206,34 @@ RAG 파이프라인은 검색 결과를 구조화된 컨텍스트로 조합하�
 
 LLM 프로바이더는 교체 가능한 구조로 설계하였다. Anthropic API 키가 있으면 Claude를 사용하고, 없으면 OpenAI 호환 API(GLM, OpenRouter 등)를 사용한다. 시스템 프롬프트에 Few-shot 예시 2개를 포함하여 응답 형식을 안내하고, 할루시네이션 방지를 위해 "검색 결과에 없는 내용은 답변하지 말 것"이라는 지시를 포함하였다.
 
-> **[업데이트]** 기말 시연 환경의 기본 LLM은 `claude-sonnet-4-6`이다. `Protocol`로 정의한 `LLMProvider` 인터페이스(`generate`, `stream` 메서드)에 따라 `AnthropicProvider`와 `OpenAICompatibleProvider` 두 구현체가 존재하며, `create_provider()` 함수에서 `ANTHROPIC_API_KEY` → `LLM_API_KEY` 순으로 우선순위를 결정한다. 따라서 운영자는 `.env` 파일 한 줄(`ANTHROPIC_API_KEY`)만 추가/제거하면 코드 변경 없이 프로바이더를 전환할 수 있다.
-
----
+> **[업데이트]** 기말 시연 환경의 기본 LLM은 claude-sonnet-4-6이다. Protocol로 정의한 LLMProvider 인터페이스(generate, stream 메서드)에 따라 AnthropicProvider와 OpenAICompatibleProvider 두 구현체가 존재하며, create_provider() 함수에서 ANTHROPIC_API_KEY → LLM_API_KEY 순으로 우선순위를 결정한다. 따라서 운영자는 .env 파일 한 줄(ANTHROPIC_API_KEY)만 추가/제거하면 코드 변경 없이 프로바이더를 전환할 수 있다.
 
 ## 5. 검색 성능 향상 설계
 
 기본 RAG 구현 이후, 검색 품질을 높이기 위해 다음과 같은 개선을 설계하였다.
 
 ### 5.1 쿼리 임베딩 최적화
-
 BGE-M3는 문서 임베딩과 쿼리 임베딩에 서로 다른 전처리를 권장한다. 쿼리에는 "Represent this sentence for searching relevant passages:"라는 instruction prefix를 붙여야 검색 성능이 올라간다는 것을 모델 공식 문서에서 확인하고 적용하였다. 문서 임베딩에는 단어, 뜻, 예문을 공백으로 이어 붙인 텍스트를 사용한다.
 
 ### 5.2 fetch_multiplier를 통한 recall 향상
-
 Dense 검색과 Sparse 검색에서 각각 top_k개만 가져오면, 한쪽에서는 순위가 낮았지만 다른 쪽에서는 높은 문서가 RRF 후보에 포함되지 못하는 문제가 있다. 이를 해결하기 위해 각 검색에서 top_k x 3개의 후보를 가져온 뒤 RRF를 적용하였다. 이 설정은 검색 시간을 약간 증가시키지만, recall이 눈에 띄게 개선되었다.
 
 ### 5.3 Adaptive RAG (쿼리 복잡도 기반 전략 분기)
-
 모든 쿼리에 동일한 검색 전략을 적용하는 것은 비효율적이다. "abandon"처럼 단순한 단어 검색에도 Agent 루프를 돌리면 불필요한 LLM 호출이 발생한다. 이를 해결하기 위해 쿼리 복잡도를 분류하고, 복잡도에 따라 검색 전략을 동적으로 선택하는 Adaptive RAG를 설계하였다.
 
-| 복잡도 | 판단 기준 | 검색 전략 |
-|--------|---------|---------|
-| Simple | 단일 단어, "X의 뜻" 패턴 | Dense 검색만 (빠름) |
-| Moderate | 유의어 질의, 예문 요청 | Hybrid RRF 검색 (정확도) |
-| Complex | 다단계 추론, 비교 분석 | Agent ReAct 루프 (깊이) |
+  ---------------------------------------------------------------------
+  복잡도          판단 기준                  검색 전략
+  --------------- -------------------------- --------------------------
+  Simple          단일 단어, "X의 뜻" 패턴   Dense 검색만 (빠름)
+
+  Moderate        유의어 질의, 예문 요청     Hybrid RRF 검색 (정확도)
+
+  Complex         다단계 추론, 비교 분석     Agent ReAct 루프 (깊이)
+  ---------------------------------------------------------------------
 
 분류기는 2단계로 동작한다. 1단계에서 정규식 패턴 매칭으로 빠르게 분류하고, 판단이 어려운 경우에만 2단계에서 LLM을 호출한다. 이렇게 하면 대부분의 단순 쿼리에서 LLM 호출 비용을 절약할 수 있다.
 
-> **[업데이트]** Adaptive RAG는 `src/adaptive.py`(QueryClassifier, AdaptiveRAG, AdaptiveResult)와 `POST /api/adaptive` 엔드포인트로 구현 완료되었다. 1단계 휴리스틱 분류는 `_RE_SIMPLE`, `_RE_MODERATE`, `_RE_COMPLEX` 세 개의 정규식 그룹으로 동작하며, 2단계 LLM 분류는 휴리스틱이 모호할 때만 호출된다. 통합 응답에는 `complexity`(분류 결과), `strategy_used`(실제 적용 전략), `graph_used`(Fusion 사용 여부), `graph_terms`(그래프에서 추가된 단어 목록)가 포함된다. 자세한 시연은 11장 참조.
+> **[업데이트]** Adaptive RAG는 src/adaptive.py(QueryClassifier, AdaptiveRAG, AdaptiveResult)와 POST /api/adaptive 엔드포인트로 구현 완료되었다. 1단계 휴리스틱 분류는 \_RE_SIMPLE, \_RE_MODERATE, \_RE_COMPLEX 세 개의 정규식 그룹으로 동작하며, 2단계 LLM 분류는 휴리스틱이 모호할 때만 호출된다. 통합 응답에는 complexity(분류 결과), strategy_used(실제 적용 전략), graph_used(Fusion 사용 여부), graph_terms(그래프에서 추가된 단어 목록)가 포함된다. 자세한 시연은 11장 참조.
 
 ### 5.4 Self-RAG와 Corrective RAG
 
@@ -229,9 +243,7 @@ Self-RAG는 "이 질문이 실제로 Anki 데이터를 검색해야 하는 질�
 
 Corrective RAG는 검색 결과가 질문과 충분히 관련이 있는지를 LLM이 평가하는 방식이다. 관련성이 낮으면 쿼리를 재작성하여 최대 2회 재검색을 시도한다. 예를 들어 "nullify"를 검색했는데 점수가 낮으면, "invalidate"로 재작성하여 다시 검색하는 식이다.
 
-> **[업데이트]** Self-RAG는 `LearningAgent._needs_retrieval()`(LLM 호출 1회), Corrective RAG는 `LearningAgent._is_relevant_result()`와 `_rewrite_query()`로 ReAct 루프 안에 통합 구현되었다. 점수 임계값은 RRF 0.005이며, 재시도 횟수는 2회로 제한한다. 단위 테스트는 `tests/test_agent.py`에서 30개 케이스로 검증한다.
-
----
+> **[업데이트]** Self-RAG는 LearningAgent.\_needs_retrieval()(LLM 호출 1회), Corrective RAG는 LearningAgent.\_is_relevant_result()와 \_rewrite_query()로 ReAct 루프 안에 통합 구현되었다. 점수 임계값은 RRF 0.005이며, 재시도 횟수는 2회로 제한한다. 단위 테스트는 tests/test_agent.py에서 30개 케이스로 검증한다.
 
 ## 6. 지식 그래프 연계 설계
 
@@ -242,85 +254,87 @@ Corrective RAG는 검색 결과가 질문과 충분히 관련이 있는지를 LL
 이를 보완하기 위해 단어 간 관계를 명시적으로 저장하는 지식 그래프를 설계하였다.
 
 ### 6.2 그래프 스키마
-
 노드는 Word(단어), Meaning(의미), Category(분류)의 세 가지 타입으로 구성한다.
 
 엣지(관계)는 다음 다섯 가지를 정의하였다:
 
-- **SYNONYM**: abandon → give up (유의어)
-- **ANTONYM**: accept ↔ reject (반의어)
-- **DERIVED_FROM**: abandonment ← abandon (파생어)
-- **CO_OCCURS**: abandon — project (예문에서 함께 등장)
-- **SAME_CATEGORY**: abandon — quit (동일 카테고리 소속)
+5.  **SYNONYM**: abandon → give up (유의어)
+6.  **ANTONYM**: accept ↔ reject (반의어)
+7.  **DERIVED_FROM**: abandonment ← abandon (파생어)
+8.  **CO_OCCURS**: abandon — project (예문에서 함께 등장)
+9.  **SAME_CATEGORY**: abandon — quit (동일 카테고리 소속)
 
 유의어와 파생어 관계는 파싱 단계에서 규칙 기반으로 추출하고, 공기 관계(CO_OCCURS)는 예문 데이터에서 동시 출현 빈도를 기반으로 생성할 계획이다.
 
 > **[업데이트]** 기말 구현에서 엣지 추출 방식이 다음과 같이 확정되었다.
->
-> - **SYNONYM/ANTONYM**: WordNet(NLTK 3.9.4) 코퍼스를 사용하여 자동 추출. `WORDNET_AVAILABLE` 플래그로 코퍼스 가용성을 확인하고, 없으면 SYNONYM/ANTONYM 추출을 건너뛰는 graceful degradation을 구현하였다.
-> - **DERIVED_FROM**: 단어 형태소 변화 규칙(접미사 -tion, -ment, -ity, -er, -able 등)으로 추출.
-> - **CO_OCCURS**: 같은 노트의 예문 내 동시 출현. 폭주 방지를 위해 **문서당 상한**(`max_cooccurrence_per_doc=10`)과 **전역 100k 엣지 경고**를 설정.
-> - **SAME_CATEGORY**: 동일 deck 소속 단어 묶음.
+
+10. **SYNONYM/ANTONYM**: WordNet(NLTK 3.9.4) 코퍼스를 사용하여 자동 추출. WORDNET_AVAILABLE 플래그로 코퍼스 가용성을 확인하고, 없으면 SYNONYM/ANTONYM 추출을 건너뛰는 graceful degradation을 구현하였다.
+11. **DERIVED_FROM**: 단어 형태소 변화 규칙(접미사 -tion, -ment, -ity, -er, -able 등)으로 추출.
+12. **CO_OCCURS**: 같은 노트의 예문 내 동시 출현. 폭주 방지를 위해 **문서당 상한**(max_cooccurrence_per_doc=10)과 **전역 100k 엣지 경고**를 설정.
+13. **SAME_CATEGORY**: 동일 deck 소속 단어 묶음.
 
 ### 6.3 GraphRAG Fusion
-
 검색 시 벡터 유사도 점수와 그래프 연결 정보를 결합하는 GraphRAG Fusion을 설계하였다. 벡터 검색으로 얻은 상위 후보에 대해 그래프에서 인접 노드(유의어, 파생어 등)를 추가로 가져와 컨텍스트를 보강한다. 이를 통해 "give up 관련 구동사"라는 질의에서 벡터 유사도로는 놓칠 수 있는 "call off", "back out" 등의 관련어도 함께 제시할 수 있다.
 
 그래프 저장소는 소규모 데이터에는 NetworkX(인메모리), 확장 시에는 Neo4j를 사용할 계획이다.
 
-> **[업데이트]** 그래프 저장소는 NetworkX `Graph` 객체로 메모리에 적재하고, **pickle**(빠른 직렬화)과 **GraphML**(상호운용)의 이중 포맷으로 영속화한다. 기본 경로는 `data/graph.pkl`, `data/graph.graphml`이며, `QdrantIndexer.index()` 인덱싱 완료 시점에 자동 빌드된다. Fusion 동작은 다음과 같다.
->
-> 1. AdaptiveRAG가 Complex 전략으로 분기되면 GraphRAG Fusion이 자동 활성화(`use_graph=True` 기본값).
-> 2. 벡터 검색 상위 K개 단어 각각에 대해 `KnowledgeGraph.get_related(word, max_hops=1)` 호출.
-> 3. 인접 노드 중 SYNONYM/DERIVED_FROM 우선 추가, ANTONYM은 별도 표시.
-> 4. 보강된 컨텍스트를 LLM에 전달하고, 응답에는 `graph_used=true`, `graph_terms=[...]` 메타데이터를 포함.
->
+> **[업데이트]** 그래프 저장소는 NetworkX Graph 객체로 메모리에 적재하고, **pickle**(빠른 직렬화)과 **GraphML**(상호운용)의 이중 포맷으로 영속화한다. 기본 경로는 data/graph.pkl, data/graph.graphml이며, QdrantIndexer.index() 인덱싱 완료 시점에 자동 빌드된다. Fusion 동작은 다음과 같다.
+
+1.  AdaptiveRAG가 Complex 전략으로 분기되면 GraphRAG Fusion이 자동 활성화(use_graph=True 기본값).
+2.  벡터 검색 상위 K개 단어 각각에 대해 KnowledgeGraph.get_related(word, max_hops=1) 호출.
+3.  인접 노드 중 SYNONYM/DERIVED_FROM 우선 추가, ANTONYM은 별도 표시.
+4.  보강된 컨텍스트를 LLM에 전달하고, 응답에는 graph_used=true, graph_terms=\[\...\] 메타데이터를 포함.
+
 > Neo4j 백엔드는 본 SPEC 범위 외로 분리하고, 별도 SPEC으로 이관하였다.
 
 ### 6.4 유사도 계산 방식 비교
-
 본 프로젝트에서 활용하는 유사도 계산 방식을 정리하면 다음과 같다.
 
-| 방식 | 적용 위치 | 특징 |
-|------|---------|------|
-| 코사인 유사도 | Dense 벡터 검색 | 의미적 유사성 측정, BGE-M3 1024차원 |
-| BM25/SPLADE 유사도 | Sparse 벡터 검색 | 키워드 매칭 강점, 토큰 가중치 기반 |
-| RRF 점수 | Dense+Sparse 결합 | 순위 기반 fusion, k=60 |
-| 그래프 거리 | 지식 그래프 탐색 | 관계 홉 수 기반, 구조적 관련성 |
+  -------------------------------------------------------------------------------
+  방식                 적용 위치            특징
+  -------------------- -------------------- -------------------------------------
+  코사인 유사도        Dense 벡터 검색      의미적 유사성 측정, BGE-M3 1024차원
 
----
+  BM25/SPLADE 유사도   Sparse 벡터 검색     키워드 매칭 강점, 토큰 가중치 기반
+
+  RRF 점수             Dense+Sparse 결합    순위 기반 fusion, k=60
+
+  그래프 거리          지식 그래프 탐색     관계 홉 수 기반, 구조적 관련성
+  -------------------------------------------------------------------------------
 
 ## 7. Agentic AI Agent 구현 방향
-
 ### 7.1 단일 RAG의 한계
 
 기본 RAG 파이프라인은 "검색 → 응답"의 단일 단계로 동작한다. 이 구조는 단순 질의에는 충분하지만, "비즈니스 영어에서 계약 해지를 표현하는 단어들을 난이도 순으로 정리해줘"처럼 여러 단계의 검색과 종합이 필요한 질문에는 한계가 있다. 이를 해결하기 위해 LLM이 도구를 반복적으로 호출하며 스스로 추론하는 Agent 구조를 도입한다.
 
 ### 7.2 ReAct 패턴 기반 Agent
-
 ReAct(Reasoning + Acting) 패턴을 적용하여, LLM이 매 스텝마다 "어떤 도구를 써야 하는가"를 판단(Thought)하고, 도구를 호출(Action)한 뒤, 결과를 관찰(Observation)하여 다음 행동을 결정하는 루프를 구성한다.
 
 Agent가 사용할 수 있는 도구(Tool)는 다음과 같다:
 
-| 도구 | 기능 |
-|------|------|
-| search_word | 하이브리드 벡터 검색 (top_k 조절 가능) |
-| rag_query | RAG 기반 자연어 답변 생성 |
-| get_related_words | 유의어/파생어 탐색 |
-| filter_by_source | 특정 덱/소스 필터 검색 |
+  -------------------------------------------------------------------
+  도구                      기능
+  ------------------------- -----------------------------------------
+  search_word               하이브리드 벡터 검색 (top_k 조절 가능)
 
-> **[업데이트]** `src/agent.py`의 `LearningAgent` 클래스가 ReAct 루프를 구현한다. 최대 5스텝(`MAX_STEPS=5`)이며, 매 스텝마다 다음 흐름을 거친다.
->
-> 1. **Thought 생성**: 현재까지의 관찰(observations)을 토대로 LLM이 다음 행동을 자연어로 추론.
-> 2. **Action 추출**: `_extract_action()`이 LLM 응답에서 JSON 블록을 파싱(중첩 JSON 지원). 도구명과 인자(args) 분리.
-> 3. **Tool 실행**: `_dispatch_tool()`이 위의 4종 도구 중 하나를 호출.
-> 4. **Observation 누적**: 결과를 `AgentStep.observation`에 저장.
-> 5. **종료 조건**: Action이 `finish` 도구이거나 스텝이 5회에 도달.
->
-> 자기 교정(`Self-Correction`)은 점수 0.005 미만일 때 자동 발동하며, 최대 2회까지 쿼리를 동의어로 재작성한다.
+  rag_query                 RAG 기반 자연어 답변 생성
+
+  get_related_words         유의어/파생어 탐색
+
+  filter_by_source          특정 덱/소스 필터 검색
+  -------------------------------------------------------------------
+
+> **[업데이트]** src/agent.py의 LearningAgent 클래스가 ReAct 루프를 구현한다. 최대 5스텝(MAX_STEPS=5)이며, 매 스텝마다 다음 흐름을 거친다.
+
+1.  **Thought 생성**: 현재까지의 관찰(observations)을 토대로 LLM이 다음 행동을 자연어로 추론.
+2.  **Action 추출**: \_extract_action()이 LLM 응답에서 JSON 블록을 파싱(중첩 JSON 지원). 도구명과 인자(args) 분리.
+3.  **Tool 실행**: \_dispatch_tool()이 위의 4종 도구 중 하나를 호출.
+4.  **Observation 누적**: 결과를 AgentStep.observation에 저장.
+5.  **종료 조건**: Action이 finish 도구이거나 스텝이 5회에 도달.
+
+> 자기 교정(Self-Correction)은 점수 0.005 미만일 때 자동 발동하며, 최대 2회까지 쿼리를 동의어로 재작성한다.
 
 ### 7.3 Agent 시나리오 예시
-
 **다단계 어휘 탐색 시나리오**:
 
 사용자가 "비즈니스에서 계약 해지 관련 단어를 난이도별로 정리해줘"라고 질문하면, Agent는 다음과 같이 동작한다.
@@ -339,129 +353,155 @@ Agent가 사용할 수 있는 도구(Tool)는 다음과 같다:
 
 ### 7.4 구현 계획
 
-Agent 구현은 `src/agent.py`에 LearningAgent 클래스로 작성하며, 최대 5스텝의 ReAct 루프를 실행한다. API로는 `POST /api/adaptive` 엔드포인트의 Complex 전략에서 Agent를 호출하는 방식으로 통합한다.
+Agent 구현은 src/agent.py에 LearningAgent 클래스로 작성하며, 최대 5스텝의 ReAct 루프를 실행한다. API로는 POST /api/adaptive 엔드포인트의 Complex 전략에서 Agent를 호출하는 방식으로 통합한다.
 
-> **[업데이트]** 7.4절은 구현 완료되었으며, Adaptive Complex 분기 외에도 `POST /api/agent` 엔드포인트를 통해 Agent를 직접 호출할 수 있다. 통합 응답에는 ReAct 스텝별 `thought / tool / args / observation / retry_count` 메타데이터가 포함되어 추론 과정을 추적할 수 있다.
-
----
+> **[업데이트]** 7.4절은 구현 완료되었으며, Adaptive Complex 분기 외에도 POST /api/agent 엔드포인트를 통해 Agent를 직접 호출할 수 있다. 통합 응답에는 ReAct 스텝별 thought / tool / args / observation / retry_count 메타데이터가 포함되어 추론 과정을 추적할 수 있다.
 
 ## 8. 최신 RAG 트렌드 반영
 
 본 프로젝트에서 적용하거나 적용을 계획 중인 최신 RAG 기법들을 정리한다.
 
-| RAG 기법 | 핵심 아이디어 | 적용 상태 |
-|---------|-------------|---------|
-| Naive RAG | 단순 검색 후 생성 | 기본 구현 완료 |
-| Advanced RAG | 하이브리드 검색, 쿼리 최적화 | BGE-M3 Hybrid + RRF 적용 |
-| Self-RAG | 검색 필요 여부를 LLM이 자율 판단 | Agent 내 구현 완료 |
-| Corrective RAG | 검색 결과 품질 자가 평가 후 재검색 | Agent 내 구현 완료 |
-| Adaptive RAG | 쿼리 복잡도에 따라 전략 동적 선택 | 분류기 + 3단계 전략 구현 완료 |
-| GraphRAG | 지식 그래프 기반 관계 검색 | 구현 완료 (v2.0, SPEC-GRAPHRAG-001) |
+  ----------------------------------------------------------------------------------------
+  RAG 기법            핵심 아이디어                        적용 상태
+  ------------------- ------------------------------------ -------------------------------
+  Naive RAG           단순 검색 후 생성                    기본 구현 완료
+
+  Advanced RAG        하이브리드 검색, 쿼리 최적화         BGE-M3 Hybrid + RRF 적용
+
+  Self-RAG            검색 필요 여부를 LLM이 자율 판단     Agent 내 구현 완료
+
+  Corrective RAG      검색 결과 품질 자가 평가 후 재검색   Agent 내 구현 완료
+
+  Adaptive RAG        쿼리 복잡도에 따라 전략 동적 선택    분류기 + 3단계 전략 구현 완료
+
+  GraphRAG            지식 그래프 기반 관계 검색           구현 완료 (v2.0)
+  ----------------------------------------------------------------------------------------
 
 이 중 특히 Adaptive RAG는 실용적 효과가 크다고 판단하였다. 단순 단어 검색(전체 쿼리의 약 60-70% 추정)에서 불필요한 LLM 호출을 줄여 응답 속도와 비용을 동시에 개선할 수 있기 때문이다.
 
 GraphRAG의 경우 Microsoft의 연구(2024)에서 제안된 커뮤니티 기반 요약 방식을 참고하였으나, 본 프로젝트에서는 24,000개 규모의 영어 학습 데이터에 맞게 단어 간 관계 그래프 형태로 단순화하여 적용할 계획이다.
 
----
-
 ## 9. 기말 구현 결과 종합 **[신규]**
 
-본 챕터는 중간 제출 이후 약 6주 동안 진행한 구현 작업의 결과를 종합한다. 구현은 SPEC-First 방식으로 진행하였으며, 각 SPEC은 `.moai/specs/` 디렉터리에 EARS 형식 요구사항으로 보존되어 있다.
+본 챕터는 중간 제출 이후 약 6주 동안 진행한 구현 작업의 결과를 종합한다. 구현은 SPEC-First 방식으로 진행하였다.
 
 ### 9.1 v1.2 ReAct Agent 구현 완료
+  -------------------------------------------------------------------------------------------
+  항목                    결과
+  ----------------------- -------------------------------------------------------------------
+  핵심 파일               src/agent.py (412라인)
 
-**SPEC**: `.moai/specs/SPEC-RAG-002.md` / 핵심 커밋: `8e51a98`
+  클래스                  LearningAgent, AgentStep, AgentResult
 
-| 항목 | 결과 |
-|------|------|
-| 핵심 파일 | `src/agent.py` (412라인) |
-| 클래스 | `LearningAgent`, `AgentStep`, `AgentResult` |
-| ReAct 루프 깊이 | 최대 5스텝 (MAX_STEPS=5) |
-| 자기 교정 재시도 | 최대 2회 (점수 0.005 미만 시) |
-| 도구 세트 | 4종 (search_word, rag_query, get_related_words, filter_by_source) |
-| 테스트 | `tests/test_agent.py` 30개 (전체 통과) |
+  ReAct 루프 깊이         최대 5스텝 (MAX_STEPS=5)
+
+  자기 교정 재시도        최대 2회 (점수 0.005 미만 시)
+
+  도구 세트               4종 (search_word, rag_query, get_related_words, filter_by_source)
+
+  테스트                  tests/test_agent.py 30개 (전체 통과)
+  -------------------------------------------------------------------------------------------
 
 구현 중 해결한 주요 이슈:
 
-- `_REACT_SYSTEM_PROMPT.format()`이 중괄호 포함 시 KeyError를 일으키는 문제 → format 대신 `replace`로 교체.
-- `_extract_action()`이 중첩 JSON(args 내 객체) 파싱 실패 → 균형 잡힌 중괄호 매칭 로직으로 재작성.
+14. \_REACT_SYSTEM_PROMPT.format()이 중괄호 포함 시 KeyError를 일으키는 문제 → format 대신 replace로 교체.
+15. \_extract_action()이 중첩 JSON(args 내 객체) 파싱 실패 → 균형 잡힌 중괄호 매칭 로직으로 재작성.
 
 ### 9.2 v1.3 Adaptive RAG 구현 완료
+  -------------------------------------------------------------------------------------
+  항목                    결과
+  ----------------------- -------------------------------------------------------------
+  핵심 파일               src/adaptive.py
 
-**SPEC**: `.moai/specs/SPEC-RAG-003.md` / 핵심 커밋: `f6b8bfb`
+  분류 단계               2단계 (정규식 휴리스틱 → LLM fallback)
 
-| 항목 | 결과 |
-|------|------|
-| 핵심 파일 | `src/adaptive.py` |
-| 분류 단계 | 2단계 (정규식 휴리스틱 → LLM fallback) |
-| 전략 분기 | Simple(Dense) / Moderate(Hybrid RRF) / Complex(Agent ReAct) |
-| 신규 메서드 | `HybridRetriever.search_dense_only()` |
-| 신규 엔드포인트 | `POST /api/adaptive` |
-| 테스트 | `tests/test_adaptive.py` 27개 (전체 통과) |
+  전략 분기               Simple(Dense) / Moderate(Hybrid RRF) / Complex(Agent ReAct)
 
-응답 스키마(`AdaptiveResponse`)에는 다음 메타데이터가 포함되어 운영자가 분류 결과를 추적할 수 있다.
+  신규 메서드             HybridRetriever.search_dense_only()
 
-```json
-{
-  "answer": "...",
-  "complexity": "simple|moderate|complex",
-  "strategy_used": "dense_only|hybrid_rrf|agent_react",
-  "sources": [...],
-  "agent_steps": null,
-  "total_agent_steps": null,
-  "graph_used": false,
-  "graph_terms": []
-}
-```
+  신규 엔드포인트         POST /api/adaptive
+
+  테스트                  tests/test_adaptive.py 27개 (전체 통과)
+  -------------------------------------------------------------------------------------
+
+응답 스키마(AdaptiveResponse)에는 다음 메타데이터가 포함되어 운영자가 분류 결과를 추적할 수 있다.
+
+    {
+      "answer": "...",
+      "complexity": "simple|moderate|complex",
+      "strategy_used": "dense_only|hybrid_rrf|agent_react",
+      "sources": [...],
+      "agent_steps": null,
+      "total_agent_steps": null,
+      "graph_used": false,
+      "graph_terms": []
+    }
 
 ### 9.3 v2.0 GraphRAG Fusion 구현 완료
 
-**SPEC**: `.moai/specs/SPEC-GRAPHRAG-001/` (spec.md + plan.md + acceptance.md) / 핵심 커밋: `6804019`, `5ce824c`, `ae9efd2`, `7aa5539`
+  ----------------------------------------------------------------------------------------
+  항목                   결과
+  ---------------------- -----------------------------------------------------------------
+  핵심 파일              src/graph.py (594라인)
 
-| 항목 | 결과 |
-|------|------|
-| 핵심 파일 | `src/graph.py` (594라인) |
-| 클래스 | `KnowledgeGraph`, `GraphBuilder`, `RelationType` |
-| 백엔드 | NetworkX `Graph` (인메모리) |
-| 영속화 | pickle + GraphML 이중 저장 (`data/graph.pkl`, `data/graph.graphml`) |
-| WordNet 의존성 | NLTK 3.9.4 + WordNet 코퍼스 (graceful degradation 지원) |
-| CO_OCCURS 상한 | 문서당 10, 전역 100k 경고 |
-| 신규 엔드포인트 | `GET /api/graph/related/{word}`, `GET /api/graph/stats` |
-| Streamlit 탭 | "지식 그래프" (Plotly 시각화) |
-| 테스트 | `tests/test_graph.py` 78개 (전체 통과) |
+  클래스                 KnowledgeGraph, GraphBuilder, RelationType
+
+  백엔드                 NetworkX Graph (인메모리)
+
+  영속화                 pickle + GraphML 이중 저장 (data/graph.pkl, data/graph.graphml)
+
+  WordNet 의존성         NLTK 3.9.4 + WordNet 코퍼스 (graceful degradation 지원)
+
+  CO_OCCURS 상한         문서당 10, 전역 100k 경고
+
+  신규 엔드포인트        GET /api/graph/related/{word}, GET /api/graph/stats
+
+  Streamlit 탭           "지식 그래프" (Plotly 시각화)
+
+  테스트                 tests/test_graph.py 78개 (전체 통과)
+  ----------------------------------------------------------------------------------------
 
 설계 단계에서 NetworkX의 단일 백엔드와 Neo4j 확장 분리는 본 SPEC 범위로 확정하였다. 그래프 빌드는 인덱싱 완료 후 자동으로 트리거되며, 영속화된 그래프가 존재하면 재기동 시 즉시 로드한다.
 
 ### 9.4 API 라우트 및 Web UI 통합
-
 기말 시점 FastAPI 엔드포인트는 9종이다.
 
-| 분류 | 엔드포인트 | 상태 |
-|------|----------|------|
-| 검색 | POST /api/search | 미드텀 |
-| 질의응답 | POST /api/query | 미드텀 |
-| 미디어 | GET /api/audio/{id} | 미드텀 |
-| 인덱싱 | POST /api/index, GET /api/index/status | 미드텀 |
-| 적응형 | POST /api/adaptive | **신규** |
-| Agent | POST /api/agent | **신규** |
-| 그래프 | GET /api/graph/related/{word}, GET /api/graph/stats | **신규** |
-| 캐시 | GET /api/cache/stats, DELETE /api/cache | **신규** |
-| 헬스체크 | GET /health | 미드텀 |
+  -----------------------------------------------------------------------------------
+  분류             엔드포인트                                            상태
+  ---------------- ----------------------------------------------------- ------------
+  검색             POST /api/search                                      미드텀
+
+  질의응답         POST /api/query                                       미드텀
+
+  미디어           GET /api/audio/{id}                                   미드텀
+
+  인덱싱           POST /api/index, GET /api/index/status                미드텀
+
+  적응형           POST /api/adaptive                                    **신규**
+
+  Agent            POST /api/agent                                       **신규**
+
+  그래프           GET /api/graph/related/{word}, GET /api/graph/stats   **신규**
+
+  캐시             GET /api/cache/stats, DELETE /api/cache               **신규**
+
+  헬스체크         GET /health                                           미드텀
+  -----------------------------------------------------------------------------------
 
 Streamlit Web UI는 4개 탭으로 구성된다: **검색 / 채팅(RAG 질의응답) / 지식 그래프(신규) / 관리(인덱싱+캐시)**.
 
 ### 9.5 LLM 프로바이더 추상화
+LLMProvider Protocol을 정의하여 두 구현체를 보유한다.
 
-`LLMProvider` Protocol을 정의하여 두 구현체를 보유한다.
+  -----------------------------------------------------------------------------------------------------
+  구현체                     SDK                 모델 예시
+  -------------------------- ------------------- ------------------------------------------------------
+  AnthropicProvider          anthropic 0.105.2   claude-sonnet-4-6, claude-opus-4-7, claude-haiku-4-5
 
-| 구현체 | SDK | 모델 예시 |
-|-------|-----|---------|
-| `AnthropicProvider` | `anthropic` 0.105.2 | claude-sonnet-4-6, claude-opus-4-7, claude-haiku-4-5 |
-| `OpenAICompatibleProvider` | `openai` | glm-5(z.ai), gpt-4o-mini, openrouter 경유 모델 |
+  OpenAICompatibleProvider   openai              glm-5(z.ai), gpt-4o-mini, openrouter 경유 모델
+  -----------------------------------------------------------------------------------------------------
 
-`create_provider()` 함수는 환경변수를 순서대로 검사하여 첫 번째로 사용 가능한 프로바이더를 반환한다. 따라서 운영자는 코드 변경 없이 `.env` 한 줄 수정으로 모델·공급자를 교체할 수 있으며, 본 시연 환경에서는 `claude-sonnet-4-6`을 기본으로 한다.
-
----
+create_provider() 함수는 환경변수를 순서대로 검사하여 첫 번째로 사용 가능한 프로바이더를 반환한다. 따라서 운영자는 코드 변경 없이 .env 한 줄 수정으로 모델·공급자를 교체할 수 있으며, 본 시연 환경에서는 claude-sonnet-4-6을 기본으로 한다.
 
 ## 10. 정량 측정 지표 **[신규]**
 
@@ -469,123 +509,134 @@ Streamlit Web UI는 4개 탭으로 구성된다: **검색 / 채팅(RAG 질의응
 
 핵심 모듈(src/) 코드량(테스트 제외):
 
-| 모듈 | LOC | 역할 |
-|------|-----|------|
-| graph.py | 594 | 지식 그래프 빌드/탐색/Fusion |
-| rag.py | 412 | RAG 파이프라인 + LLM Provider 추상화 |
-| retriever.py | 330 | Hybrid 검색 + RRF |
-| web/app.py | 283 | Streamlit UI (4개 탭) |
-| parser.py | 257 | Anki .apkg/.txt 파싱 |
-| cache.py | 207 | 임베딩 캐시 |
-| __main__.py | 192 | CLI 진입점 |
-| embedder.py | 160 | BGE-M3 임베딩 |
-| indexer.py | 142 | Qdrant 인덱싱 + 그래프 빌드 트리거 |
-| audio.py | 90 | 오디오 추출/재생 |
-| models.py | 42 | Document, SearchResult 등 데이터 모델 |
-| **합계** | **2,709** | (src/agent.py, src/adaptive.py 미포함) |
+  ---------------------------------------------------------------------------
+  모듈                   LOC         역할
+  ---------------------- ----------- ----------------------------------------
+  graph.py               594         지식 그래프 빌드/탐색/Fusion
+
+  rag.py                 412         RAG 파이프라인 + LLM Provider 추상화
+
+  retriever.py           330         Hybrid 검색 + RRF
+
+  web/app.py             283         Streamlit UI (4개 탭)
+
+  parser.py              257         Anki .apkg/.txt 파싱
+
+  cache.py               207         임베딩 캐시
+
+  **main**.py            192         CLI 진입점
+
+  embedder.py            160         BGE-M3 임베딩
+
+  indexer.py             142         Qdrant 인덱싱 + 그래프 빌드 트리거
+
+  audio.py               90          오디오 추출/재생
+
+  models.py              42          Document, SearchResult 등 데이터 모델
+
+  **합계**               **2,709**   (src/agent.py, src/adaptive.py 미포함)
+  ---------------------------------------------------------------------------
 
 테스트 코드는 별도로 2,948라인이며, 13개 테스트 파일에 분산되어 있다.
 
 ### 10.2 테스트 결과
+pytest --collect-only 기준 수집 테스트 수: **167개**.
 
-`pytest --collect-only` 기준 수집 테스트 수: **167개**.
+  ---------------------------------------------------------------------------------------------------------
+  테스트 파일                                      케이스 수(추정)   대상 모듈
+  ------------------------------------------------ ----------------- --------------------------------------
+  test_graph.py                                    78                그래프 빌드/관계 추출/Fusion
 
-| 테스트 파일 | 케이스 수(추정) | 대상 모듈 |
-|-----------|---------------|---------|
-| test_graph.py | 78 | 그래프 빌드/관계 추출/Fusion |
-| test_adaptive.py | 27 | 분류기/전략 분기 |
-| test_agent.py | 30 | ReAct 루프/자기 교정 |
-| test_rag.py | 18 | 컨텍스트 빌드/스트리밍/Provider 주입 |
-| test_parser.py | 9 | .apkg ZIP/SQLite/HTML 정제 |
-| test_cache.py | 7 | TTL/eviction/키 정규화 |
-| test_api.py | 6 | FastAPI 라우트 통합 |
-| 기타 (models/audio/embedder/retriever/indexer) | 13 | 모듈 단위 검증 |
+  test_adaptive.py                                 27                분류기/전략 분기
 
-기말 시점 모듈별 커버리지(SPEC-GRAPHRAG-001 acceptance.md 기준):
+  test_agent.py                                    30                ReAct 루프/자기 교정
 
-| 모듈 | 커버리지 |
-|------|---------|
-| src/graph.py | 86% |
-| src/adaptive.py | 96% |
-| src/indexer.py | 90% |
-| src/api/routes/graph.py | 89% |
+  test_rag.py                                      18                컨텍스트 빌드/스트리밍/Provider 주입
+
+  test_parser.py                                   9                 .apkg ZIP/SQLite/HTML 정제
+
+  test_cache.py                                    7                 TTL/eviction/키 정규화
+
+  test_api.py                                      6                 FastAPI 라우트 통합
+
+  기타 (models/audio/embedder/retriever/indexer)   13                모듈 단위 검증
+  ---------------------------------------------------------------------------------------------------------
+
+기말 시점 모듈별 커버리지
+
+  ------------------------------------------------------------------
+  모듈                          커버리지
+  ----------------------------- ------------------------------------
+  src/graph.py                  86%
+
+  src/adaptive.py               96%
+
+  src/indexer.py                90%
+
+  src/api/routes/graph.py       89%
+  ------------------------------------------------------------------
 
 기존 v1.2 Agent와 v1.3 Adaptive 테스트는 GraphRAG 통합 이후에도 전체 회귀 통과를 유지한다.
 
 ### 10.3 인덱스 규모
+  ----------------------------------------------------------------------------
+  항목                  값
+  --------------------- ------------------------------------------------------
+  Qdrant 컬렉션명       anki_rag
 
-| 항목 | 값 |
-|------|---|
-| Qdrant 컬렉션명 | `anki_rag` |
-| 인덱싱 포인트 수 | **73,410** |
-| Dense 벡터 차원 | 1024 (float32) |
-| Sparse 벡터 | SPLADE 가중치(BGE-M3 통합 인코딩) |
-| 평균 페이로드 키 | 6종 (word/meaning/pronunciation/example/source/deck) |
-| 그래프 노드 수 | 인덱싱 단계 빌드, `GET /api/graph/stats`로 조회 |
+  인덱싱 포인트 수      **73,410**
 
-### 10.4 참조 자료 분류 (그룹 2 기준)
+  Dense 벡터 차원       1024 (float32)
 
-평가 기준 **그룹 2 — 참조 자료 양/질**에 따라 카운트한다.
+  Sparse 벡터           SPLADE 가중치(BGE-M3 통합 인코딩)
 
-| 포맷 | 파일 수 | 비고 |
-|------|--------|------|
-| Markdown (.md) | 476 | SPEC/문서/agent/skill 정의 |
-| YAML (.yaml) | 201 | 설정/구성/SPEC frontmatter |
-| JSON (.json) | 64 | 설정/메타데이터 |
-| Anki (.apkg) | 5 | 원본 학습 데이터 |
-| Text (.txt) | 1 (10K 문장) | 원서 발췌 |
+  평균 페이로드 키      6종 (word/meaning/pronunciation/example/source/deck)
 
-기준값 30개를 모든 포맷에서 초과 충족한다.
-
----
+  그래프 노드 수        인덱싱 단계 빌드, GET /api/graph/stats로 조회
+  ----------------------------------------------------------------------------
 
 ## 11. 시연 시나리오 **[신규]**
 
 본 챕터는 발표 시연(그룹 4)에서 실제로 보여줄 흐름을 정리한 것으로, 모든 시나리오는 기말 시점 운영 환경(uvicorn + Streamlit + 실제 LLM 호출)에서 재현 가능하다.
 
 ### 11.1 시나리오 A — Simple 쿼리 (Dense 전용)
+**입력**: {\"question\": \"abandon meaning\", \"use_graph\": false}
 
-**입력**: `{"question": "abandon meaning", "use_graph": false}`
+**엔드포인트**: POST /api/adaptive
 
-**엔드포인트**: `POST /api/adaptive`
-
-**예상 동작**: QueryClassifier가 휴리스틱으로 Simple 판정 → `HybridRetriever.search_dense_only()` 호출 → RAG 파이프라인이 컨텍스트 생성 → LLM이 단어/뜻/예문/출처 형식으로 응답.
+**예상 동작**: QueryClassifier가 휴리스틱으로 Simple 판정 → HybridRetriever.search_dense_only() 호출 → RAG 파이프라인이 컨텍스트 생성 → LLM이 단어/뜻/예문/출처 형식으로 응답.
 
 **실측 응답(요약)**:
 
-```
-complexity: simple
-strategy_used: dense_only
-answer: "abandon [/əˈbændən/]
-         v. 단념하다, 버리다, 포기하다
-         n. 자유분방, 방종
-         예문: abandon our homes ..."
-sources: [
-  {word: "abandonment", source: "toefl_voca_v1", deck: "TOEFL 영단어"},
-  {word: "abandon", source: "--forvo-youglish_link", deck: "해커스-초록이"},
-  {word: "abdicate", source: "xfer_voca_2022", deck: "편입 영단어 2022"}
-]
-```
+    complexity: simple
+    strategy_used: dense_only
+    answer: "abandon [/əˈbændən/]
+             v. 단념하다, 버리다, 포기하다
+             n. 자유분방, 방종
+             예문: abandon our homes ..."
+    sources: [
+      {word: "abandonment", source: "toefl_voca_v1", deck: "TOEFL 영단어"},
+      {word: "abandon", source: "--forvo-youglish_link", deck: "해커스-초록이"},
+      {word: "abdicate", source: "xfer_voca_2022", deck: "편입 영단어 2022"}
+    ]
 
 ### 11.2 시나리오 B — Moderate 쿼리 (Hybrid + Graph Fusion)
 
-**입력**: `{"question": "give up과 유사한 구동사", "use_graph": true}`
+**입력**: {\"question\": \"give up과 유사한 구동사\", \"use_graph\": true}
 
-**엔드포인트**: `POST /api/adaptive`
+**엔드포인트**: POST /api/adaptive
 
-**예상 동작**: 휴리스틱이 "유사한"·"구동사" 키워드로 Moderate 판정 → `HybridRetriever.search()` (Dense+Sparse+RRF) → 그래프 인접 노드 추가 → 컨텍스트 보강 → LLM 응답.
+**예상 동작**: 휴리스틱이 "유사한"·"구동사" 키워드로 Moderate 판정 → HybridRetriever.search() (Dense+Sparse+RRF) → 그래프 인접 노드 추가 → 컨텍스트 보강 → LLM 응답.
 
 ### 11.3 시나리오 C — Complex 쿼리 (Agent ReAct + GraphRAG)
+**입력**: {\"question\": \"비즈니스에서 계약 해지 관련 단어를 난이도 순으로 정리해줘\", \"use_graph\": true}
 
-**입력**: `{"question": "비즈니스에서 계약 해지 관련 단어를 난이도 순으로 정리해줘", "use_graph": true}`
+**엔드포인트**: POST /api/adaptive
 
-**엔드포인트**: `POST /api/adaptive`
-
-**예상 동작**: 휴리스틱이 "정리해줘"·다단계 요구로 Complex 판정 → `LearningAgent.run()` 호출 → ReAct 루프 진입(최대 5스텝) → 매 스텝의 thought/tool/args/observation을 응답에 포함.
+**예상 동작**: 휴리스틱이 "정리해줘"·다단계 요구로 Complex 판정 → LearningAgent.run() 호출 → ReAct 루프 진입(최대 5스텝) → 매 스텝의 thought/tool/args/observation을 응답에 포함.
 
 ### 11.4 시나리오 D — 할루시네이션 방어 검증
-
-**입력**: 데이터에 존재하지 않는 단어 (예: `"quibblesnark의 뜻은?"`)
+**입력**: 데이터에 존재하지 않는 단어 (예: \"quibblesnark의 뜻은?\")
 
 **기대 동작**: 검색 결과가 RRF 0.005 임계값 미만이면 컨텍스트 빌드 단계에서 제외 → LLM이 시스템 프롬프트 지시("검색 결과에 없는 내용은 답변하지 말 것")에 따라 **"검색된 자료에 없습니다"** 메시지로 응답.
 
@@ -596,20 +647,21 @@ sources: [
 이는 SYSTEM_PROMPT의 "검색 결과에 없는 내용은 답변하지 말 것" 지시가 실제로 LLM 응답에 반영됨을 보여주는 증거이다.
 
 ### 11.5 시나리오 E — 출처 추적 가능성
-
 **평가 기준**: 그룹 1-2 (참조 문서 출력 가능 여부)
 
-모든 응답 스키마(`/api/search`, `/api/query`, `/api/adaptive`)에는 `sources` 배열이 포함되며, 각 항목은 다음 세 필드로 구성된다.
+모든 응답 스키마(/api/search, /api/query, /api/adaptive)에는 sources 배열이 포함되며, 각 항목은 다음 세 필드로 구성된다.
 
-| 필드 | 의미 | 예시 |
-|------|------|------|
-| word | 검색된 단어 또는 표현 | "abandon" |
-| source | 원본 .apkg 파일명 | "toefl_voca_v1" |
-| deck | Anki 덱 이름(노트북) | "TOEFL 영단어" |
+  ---------------------------------------------------------------------
+  필드                   의미                    예시
+  ---------------------- ----------------------- ----------------------
+  word                   검색된 단어 또는 표현   "abandon"
+
+  source                 원본 .apkg 파일명       "toefl_voca_v1"
+
+  deck                   Anki 덱 이름(노트북)    "TOEFL 영단어"
+  ---------------------------------------------------------------------
 
 따라서 사용자는 답변의 어떤 부분이 어느 학습 덱에서 인출되었는지 즉시 확인할 수 있다.
-
----
 
 ## 12. 결론 및 향후 계획
 
@@ -617,31 +669,16 @@ sources: [
 
 기말 프로젝트에서는 설계 완료 단계였던 지식 그래프(NetworkX 백엔드)를 실제 구현하여 v2.0으로 반영하였다. WordNet 기반 ANTONYM 자동 추출, 그래프 영속화(pickle+GraphML 이중화), CO_OCCURS 엣지 상한, AdaptiveRAG Complex 경로 Fusion 주입, FastAPI/Streamlit 인터페이스까지 전체 파이프라인이 통합되었다. Neo4j 백엔드로의 확장과 Agent 도구 세트 확장(학습 계획 수립, 복습 일정 생성 등 개인화 학습 지원)은 향후 개선 과제로 남긴다.
 
-전체 구현 단계별 진행 상황은 다음과 같다.
-
-| 구현 단계 | 주요 내용 | 상태 |
-|---------|---------|------|
-| v1.1 | Hybrid RAG (BGE-M3 + RRF + Few-shot) | 완료 |
-| v1.2 | Agentic RAG (ReAct + Self-RAG + Corrective RAG) | 완료 (2026-04-12) |
-| v1.3 | Adaptive RAG (쿼리 복잡도 분류 + 전략 분기) | 완료 (2026-04-15) |
-| v2.0 (기말) | GraphRAG (지식 그래프 + 벡터 Fusion) | 완료 (2026-04-19) |
-| v2.1 (향후) | LLM 프로바이더 다중화 (Anthropic + OpenAI 호환) | 완료 (2026-05-31) |
-| v3.0 (예정) | Neo4j 백엔드 + 개인화 학습 일정 Agent | 향후 |
-
 ### 12.1 회고
 
 본 프로젝트를 진행하며 얻은 핵심 학습은 다음 세 가지이다.
 
-첫째, **추상화 인터페이스의 가치**. `LLMProvider` Protocol과 단일 `AdaptiveRAG.query()` 엔트리는 시연 단계에서 환경 변경 비용을 최소화하였다. 시연 직전 LLM 공급자가 사용량 정책에 의해 throttle되었을 때, 코드 변경 없이 `.env` 한 줄(`ANTHROPIC_API_KEY`)을 추가하여 5분 안에 복구할 수 있었다.
+첫째, **추상화 인터페이스의 가치**. LLMProvider Protocol과 단일 AdaptiveRAG.query() 엔트리는 시연 단계에서 환경 변경 비용을 최소화하였다. 시연 직전 LLM 공급자가 사용량 정책에 의해 throttle되었을 때, 코드 변경 없이 .env 한 줄(ANTHROPIC_API_KEY)을 추가하여 5분 안에 복구할 수 있었다.
 
 둘째, **점진적 SPEC 분할**. v1.1 → v1.2 → v1.3 → v2.0의 단계별 SPEC 분할은 각 단계의 회귀 테스트를 보존하면서 새 기능을 안전하게 통합하도록 도왔다. 모든 단계에서 이전 테스트가 통과하는 상태로 합치는 원칙을 유지하였다.
 
-셋째, **자료의 양보다 분류의 질**. 73,410 포인트의 인덱스보다, 응답의 `sources` 필드 하나가 사용자 신뢰에 더 큰 영향을 미쳤다. "어디서 가져왔는가"를 명시하는 한 줄이 LLM의 자신만만한 환각보다 훨씬 큰 가치를 가진다.
-
----
+셋째, **자료의 양보다 분류의 질**. 73,410 포인트의 인덱스보다, 응답의 sources 필드 하나가 사용자 신뢰에 더 큰 영향을 미쳤다. "어디서 가져왔는가"를 명시하는 한 줄이 LLM의 자신만만한 환각보다 훨씬 큰 가치를 가진다.
 
 **기술 스택**: Python 3.13 / BGE-M3 (FlagEmbedding) / Qdrant / NetworkX / NLTK WordNet / FastAPI / Streamlit / Anthropic Claude Sonnet 4.6 / OpenAI 호환 API (GLM 폴백)
 
 **프로젝트 메타데이터**: 167개 테스트, 5개 SPEC 문서, 9개 코어 모듈, 9개 REST 엔드포인트, 4개 Streamlit 탭
-
-**리포지토리 기준 시점**: feature/spec-graphrag-001 브랜치, HEAD = 5ce824c (2026-04-19) + LLM 프로바이더 다중화 추가 (2026-05-31)
