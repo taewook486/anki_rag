@@ -8,17 +8,27 @@ authors = [
 readme = "README.md"
 requires-python = ">=3.11"
 dependencies = [
+    # Core RAG
     "flagembedding>=1.2",
     "qdrant-client>=1.9",
+    "transformers>=4.44,<4.52",
+    "torch>=2.3",
+    "networkx>=3.2",
+    "nltk>=3.9.4",
+    # LLM 프로바이더 (둘 다 기본 포함 — 환경변수로 선택)
     "openai>=1.30",
+    "anthropic>=0.28",
+    # 데이터 모델 / 유틸
     "pydantic>=2.7",
     "click>=8.1",
     "beautifulsoup4>=4.12",
-    "torch>=2.3",
     "python-dotenv>=1.0",
-    "transformers>=4.44,<4.52",
-    "networkx>=3.2",
-    "nltk>=3.9.4",
+    # Web UI / API (시연 핵심 경로 — 기본 포함)
+    "fastapi>=0.104",
+    "uvicorn[standard]>=0.24",
+    "streamlit>=1.28",
+    "python-multipart>=0.0.6",
+    "plotly>=6.7",
 ]
 
 [project.optional-dependencies]
@@ -29,13 +39,6 @@ dev = [
     "ruff>=0.3",
     "mypy>=1.9",
 ]
-web = [
-    "fastapi>=0.104",
-    "uvicorn[standard]>=0.24",
-    "streamlit>=1.28",
-    "python-multipart>=0.0.6",
-]
-anthropic = ["anthropic>=0.28"]
 
 [build-system]
 requires = ["hatchling"]
