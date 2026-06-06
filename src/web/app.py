@@ -132,10 +132,13 @@ def show_chat_page():
         with st.chat_message("assistant"):
             with st.spinner("생각 중..."):
                 try:
+                    # @MX:NOTE: 채팅 탭은 Adaptive RAG 통합 엔드포인트를 호출하여
+                    # 시연 시나리오 5종(Simple/Moderate/Complex/Hallucination/출처)을
+                    # 채팅 UI에서 그대로 보여줄 수 있도록 한다.
                     response = requests.post(
-                        f"{API_BASE_URL}/api/query",
-                        json={"question": prompt, "top_k": 5, "source_filter": None},
-                        timeout=120,
+                        f"{API_BASE_URL}/api/adaptive",
+                        json={"question": prompt, "use_graph": True},
+                        timeout=180,
                     )
                     response.raise_for_status()
                     data = response.json()
@@ -143,11 +146,42 @@ def show_chat_page():
 
                     st.markdown(answer)
 
+                    # Adaptive 메타데이터 한 줄 캡션
+                    _icon = {
+                        "simple": "🟢",
+                        "moderate": "🟡",
+                        "complex": "🔴",
+                    }.get(data.get("complexity", ""), "⚪")
+                    _meta_parts = [
+                        f"{_icon} complexity: **{data.get('complexity', '?')}**",
+                        f"strategy: **{data.get('strategy_used', '?')}**",
+                        f"graph_used: **{data.get('graph_used', False)}**",
+                    ]
+                    if data.get("total_agent_steps"):
+                        _meta_parts.append(f"agent_steps: **{data['total_agent_steps']}**")
+                    if data.get("graph_terms"):
+                        _meta_parts.append(f"graph_terms: **{', '.join(data['graph_terms'][:5])}**")
+                    st.caption(" · ".join(_meta_parts))
+
                     # 출처 표시
                     if data.get("sources"):
                         with st.expander("📚 출처"):
                             for source in data["sources"]:
                                 st.text(f"- {source['word']} ({source['source']} - {source['deck']})")
+
+                    # Agent ReAct 스텝 (Complex 전용)
+                    if data.get("agent_steps"):
+                        with st.expander("🧠 Agent 추론 스텝 (ReAct)"):
+                            for i, step in enumerate(data["agent_steps"], 1):
+                                st.markdown(f"**Step {i}**")
+                                st.markdown(f"- 💭 thought: {step.get('thought', '')}")
+                                st.markdown(f"- 🔧 tool: `{step.get('tool', '')}`")
+                                st.markdown(f"- 📝 args: `{step.get('args', {})}`")
+                                obs = step.get("observation", "")
+                                if len(obs) > 300:
+                                    obs = obs[:300] + "..."
+                                st.markdown(f"- 👀 observation: {obs}")
+                                st.markdown("---")
 
                     # 응답 저장
                     st.session_state.messages.append({"role": "assistant", "content": answer})
