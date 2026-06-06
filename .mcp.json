@@ -1,20 +1,36 @@
 {
-  "$schema": "https://raw.githubusercontent.com/anthropics/claude-code/main/.mcp.schema.json",
   "mcpServers": {
     "context7": {
-      "$comment": "Up-to-date documentation and code examples via Context7",
-      "command": "/bin/bash",
-      "args": ["-l", "-c", "exec npx -y @upstash/context7-mcp@latest"]
+      "type": "stdio",
+      "command": "C:\\Program Files\\nodejs\\node.exe",
+      "args": [
+        "C:\\Users\\taewo\\AppData\\Roaming\\npm\\node_modules\\@upstash\\context7-mcp\\dist\\index.js"
+      ],
+      "env": {}
     },
     "sequential-thinking": {
-      "$comment": "Step-by-step reasoning for complex problems",
-      "command": "/bin/bash",
-      "args": ["-l", "-c", "exec npx -y @modelcontextprotocol/server-sequential-thinking"]
+      "type": "stdio",
+      "command": "C:\\Program Files\\nodejs\\node.exe",
+      "args": [
+        "C:\\Users\\taewo\\AppData\\Roaming\\npm\\node_modules\\@modelcontextprotocol\\server-sequential-thinking\\dist\\index.js"
+      ],
+      "env": {}
+    },
+    "playwright": {
+      "type": "stdio",
+      "command": "C:\\Program Files\\nodejs\\node.exe",
+      "args": [
+        "C:\\Users\\taewo\\AppData\\Roaming\\npm\\node_modules\\@playwright\\mcp\\cli.js"
+      ],
+      "env": {}
+    },
+    "hwp-mcp": {
+      "type": "stdio",
+      "command": "C:\\Program Files\\nodejs\\node.exe",
+      "args": [
+        "C:\\Users\\taewo\\AppData\\Roaming\\npm\\node_modules\\hwp-mcp\\dist\\server.js"
+      ],
+      "env": {}
     }
-  },
-  "staggeredStartup": {
-    "enabled": true,
-    "delayMs": 500,
-    "connectionTimeout": 15000
   }
 }
